@@ -176,7 +176,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)SignInStatus.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SignInUIEmphasisFeature.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SignInUIGameCategory.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SignInUISettings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SignOutCompletedEventArgs.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Social\Manager\EventQueue.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Social\Manager\InternalEventQueue.cs" />

@@ -45,8 +45,8 @@ namespace Microsoft.Xbox.Services.Presence
 
         public Task<ReadOnlyCollection<PresenceRecord>> GetPresenceForSocialGroupAsync(string socialGroup)
         {
-            return this.GetPresenceForSocialGroupAsync(socialGroup, null, null, null, PresenceDetailLevel.All, true, false)
-   ;     }
+            return this.GetPresenceForSocialGroupAsync(socialGroup, null, null, null, PresenceDetailLevel.All, true, false);
+        }
 
         public DevicePresenceChangeSubscription SubscribeToDevicePresenceChange(string xboxUserId)
         {

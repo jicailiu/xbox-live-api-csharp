@@ -14,6 +14,7 @@ namespace Microsoft.Xbox.Services.System
     using global::System.Linq;
     using global::System.Text;
     using global::System.Threading.Tasks;
+    using global::System.Diagnostics.Tracing;
 
     internal class UserImpl : IUserImpl
     {
@@ -190,41 +191,8 @@ namespace Microsoft.Xbox.Services.System
             request.Properties.Add("Policy", this.AuthConfig.RPSTicketPolicy);
             if (promptForCredentialsIfNeeded)
             {
-                var uiSettings = XboxLiveAppConfiguration.Instance.AppSignInUISettings;
-
                 string pfn = Windows.ApplicationModel.Package.Current.Id.FamilyName;
                 request.Properties.Add("PackageFamilyName", pfn);
-
-                if (uiSettings.Enabled())
-                {
-                    if (uiSettings.BackgroundHexColor.Length != 0)
-                    {
-                        request.Properties.Add("PreferredColor", uiSettings.BackgroundHexColor);
-                    }
-
-                    if (uiSettings.TitleCategory == SignInUIGameCategory.Casual)
-                    {
-                        request.Properties.Add("CasualGame", "");
-                    }
-
-                    if (uiSettings.BackgroundImage.Length != 0)
-                    {
-                        request.Properties.Add("TitleUpsellImage", uiSettings.BackgroundImage);
-                    }
-
-                    var featureCount = uiSettings.EmphasisFeatures.Count;
-                    if (featureCount > 0)
-                    {
-                        featureCount = Math.Min(3, featureCount);
-                        string bullets = "";
-                        foreach (var feature in uiSettings.EmphasisFeatures)
-                        {
-                            bullets += feature.ToString() + ",";
-                        }
-
-                        request.Properties.Add("TitleUpsellFeatures", bullets);
-                    }
-                }
             }
 
             TokenAndSignatureResult tokenAndSignatureReturnResult = null;
@@ -244,11 +212,6 @@ namespace Microsoft.Xbox.Services.System
             }
 
             return tokenAndSignatureReturnResult;
-        }
-
-        public Task<SignInResult> SwitchAccountAsync()
-        {
-            throw new NotImplementedException();
         }
 
         private WebTokenRequestResult RequestTokenFromIDP(CoreDispatcher coreDispatcher, bool promptForCredentialsIfNeeded, WebTokenRequest request)

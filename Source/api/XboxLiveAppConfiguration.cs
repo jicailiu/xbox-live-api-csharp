@@ -22,10 +22,7 @@ namespace Microsoft.Xbox.Services
 
         private XboxLiveAppConfiguration()
         {
-            this.AppSignInUISettings = new SignInUISettings();
         }
-
-        public SignInUISettings AppSignInUISettings { get; set; }
 
         public string PublisherId { get; set; }
 
