@@ -1,12 +1,11 @@
 // Copyright (c) Microsoft Corporation
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-// 
-namespace Microsoft.Xbox.Services
+
+namespace Microsoft.Xbox.Services.Stats.Manager
 {
-    public enum HttpCallResponseBodyType
+    public enum StatValueType
     {
-        StringBody = 0,
-        VectorBody = 1,
-        JsonBody = 2,
+        Number,
+        String
     }
 }

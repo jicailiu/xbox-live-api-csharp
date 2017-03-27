@@ -13,16 +13,16 @@ namespace Microsoft.Xbox.Services
 
     public class MockXboxLiveHttpResponse : XboxLiveHttpResponse
     {
-        public MockXboxLiveHttpResponse(int httpStatus) : this(httpStatus, null, HttpCallResponseBodyType.StringBody, null, new Dictionary<string, string>())
+        public MockXboxLiveHttpResponse(int httpStatus) : this(httpStatus, null, null, new Dictionary<string, string>())
         {
         }
 
-        public MockXboxLiveHttpResponse(int httpStatus, Dictionary<string, string> headers) : this(httpStatus, null, HttpCallResponseBodyType.StringBody, null, headers)
+        public MockXboxLiveHttpResponse(int httpStatus, Dictionary<string, string> headers) : this(httpStatus, null, null, headers)
         {
         }
 
         [JsonConstructor]
-        public MockXboxLiveHttpResponse(int httpStatus, JObject body, HttpCallResponseBodyType bodyType, string characterSet = null, Dictionary<string, string> headers = null)
+        public MockXboxLiveHttpResponse(int httpStatus, JObject body, string characterSet = null, Dictionary<string, string> headers = null)
         {
             string bodyJson = JsonConvert.SerializeObject(body);
             byte[] bodyBytes = Encoding.UTF8.GetBytes(bodyJson ?? "");
@@ -37,7 +37,7 @@ namespace Microsoft.Xbox.Services
                 }
             }
 
-            this.Initialize(httpStatus, bodyStream, bodyType, bodyStream.Length, characterSet ?? "utf-8", webHeaders);
+            this.Initialize(httpStatus, bodyStream, bodyStream.Length, characterSet ?? "utf-8", webHeaders);
         }
     }
 }

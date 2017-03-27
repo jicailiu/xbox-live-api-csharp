@@ -7,24 +7,10 @@ namespace Microsoft.Xbox.Services
 
     public class XboxLiveContextSettings
     {
-#if WINDOWS_UWP
-        private static Windows.UI.Core.CoreDispatcher dispatcher;
-#endif
-
         public XboxLiveContextSettings()
         {
             this.DiagnosticsTraceLevel = XboxServicesDiagnosticsTraceLevel.Off;
         }
-
-#if WINDOWS_UWP
-        public static Windows.UI.Core.CoreDispatcher Dispatcher
-        {
-            get
-            {
-                return dispatcher ?? (dispatcher = Windows.ApplicationModel.Core.CoreApplication.MainView.Dispatcher);
-            }
-        }
-#endif
 
         public bool UseCoreDispatcherForEventRouting { get; set; }
 
@@ -41,8 +27,6 @@ namespace Microsoft.Xbox.Services
         public XboxServicesDiagnosticsTraceLevel DiagnosticsTraceLevel { get; private set; }
 
         public bool EnableServiceCallRoutedEvents { get; set; }
-
-        public event EventHandler<XboxServiceCallRoutedEventArgs> ServiceCallRouted;
 
         public void DisableAssertsForXboxLiveThrottlingInDevSandboxes(XboxLiveContextThrottleSetting setting)
         {

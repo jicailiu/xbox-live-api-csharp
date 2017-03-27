@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:leaderboard="using:Microsoft.Xbox.Services.Leaderboard"
     mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="768"
     DataContext="{Binding RelativeSource={RelativeSource Self}}">
 
@@ -17,7 +18,7 @@
 
         <StackPanel Orientation="Horizontal">
             <Button x:Name="button" Content="Sign In" Click="button_Click" Margin="12" Width="100"/>
-            <TextBlock x:Name="textBlock" Text="TextBlock" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding User.Gamertag}" VerticalAlignment="Center"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Margin="4">
@@ -26,7 +27,28 @@
                 <Button x:Name="globalLeaderboardButton" Content="Query Global Leaderboard" Click="globalLeaderboardButton_Click" Margin="4" VerticalAlignment="Top"/>
                 <Button x:Name="socialLeaderboardButton" Content="Query Social Leaderboard" Click="socialLeaderboardButton_Click" Margin="4" VerticalAlignment="Top"/>
             </StackPanel>
-            <TextBlock x:Name="leaderboardData" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Height="150" Margin="4"/>
+            <TextBlock>
+                <Run>Showing </Run>
+                <Run Text="{Binding Leaderboard.Rows.Count}"/>
+                <Run Text=" of "/>
+                <Run Text="{Binding Leaderboard.TotalRowCount}"/>
+            </TextBlock>
+            <ItemsControl ItemsSource="{Binding Leaderboard.Rows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="leaderboard:LeaderboardRow">
+                        <Grid>
+                            <TextBlock Margin="4">
+                                <Run FontWeight="Bold" FontSize="20" Text="{Binding Rank}"/>
+                                <Run FontWeight="Bold" FontSize="20" Text="."/>
+                                <Run Text="{Binding Gamertag}"/>
+                            </TextBlock>
+                            <TextBlock TextAlignment="Right" HorizontalAlignment="Right">
+                                <Run Text="{Binding Values[0]}"/>
+                            </TextBlock>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Margin="4">

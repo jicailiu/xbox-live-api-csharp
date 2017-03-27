@@ -15,14 +15,14 @@ namespace Microsoft.Xbox.Services.UnitTests.Stats
         [TestMethod]
         public void GetInstance()
         {
-            IStatsManager sm = StatsManager.Singleton;
+            IStatsManager sm = StatsManager.Instance;
             Assert.IsNotNull(sm);
         }
 
         [TestMethod]
         public void AddLocalUser()
         {
-            StatsManager.Singleton.AddLocalUser(this.user);
+            StatsManager.Instance.AddLocalUser(this.user);
         }
     }
 }

@@ -18,10 +18,10 @@ namespace Microsoft.Xbox.Services.Shared
 
     internal class CallBufferReturnObject : EventArgs
     {
-        public List<string> UserList { get; private set; }
+        public List<XboxLiveUser> UserList { get; private set; }
         public CallBufferTimerCompletionContext CompletionContext { get; private set; }
 
-        public CallBufferReturnObject(List<string> userList, CallBufferTimerCompletionContext context)
+        public CallBufferReturnObject(List<XboxLiveUser> userList, CallBufferTimerCompletionContext context)
         {
             this.UserList = userList;
             this.CompletionContext = context;
@@ -31,7 +31,7 @@ namespace Microsoft.Xbox.Services.Shared
     internal class CallBufferTimer
     {
         private readonly TimeSpan duration;
-        private readonly List<string> usersToCall = new List<string>();
+        private readonly List<XboxLiveUser> usersToCall = new List<XboxLiveUser>();
         private readonly Dictionary<string, bool> usersToCallMap = new Dictionary<string, bool>();
 
         private bool isTaskInProgress;
@@ -51,22 +51,22 @@ namespace Microsoft.Xbox.Services.Shared
             this.FireHelper();
         }
 
-        public void Fire(List<string> xboxUserIds, CallBufferTimerCompletionContext completionContext = null)
+        public void Fire(List<XboxLiveUser> users, CallBufferTimerCompletionContext completionContext = null)
         {
-            if (xboxUserIds == null)
+            if (users == null)
             {
-                throw new ArgumentNullException("xboxUserIds");
+                throw new ArgumentNullException("users");
             }
 
             lock (this.usersToCall)
             {
                 this.callBufferTimerCompletionContext = completionContext;
-                foreach (string xuid in xboxUserIds)
+                foreach (XboxLiveUser user in users)
                 {
-                    if (!this.usersToCallMap.ContainsKey(xuid))
+                    if (!this.usersToCallMap.ContainsKey(user.XboxUserId))
                     {
-                        this.usersToCall.Add(xuid);
-                        this.usersToCallMap[xuid] = true;
+                        this.usersToCall.Add(user);
+                        this.usersToCallMap[user.XboxUserId] = true;
                     }
                 }
             }
@@ -86,7 +86,7 @@ namespace Microsoft.Xbox.Services.Shared
                 this.isTaskInProgress = true;
                 this.previousTime = DateTime.Now;
 
-                List<string> userCopy;
+                List<XboxLiveUser> userCopy;
                 lock (this.usersToCall)
                 {
                     userCopy = this.usersToCall.ToList();

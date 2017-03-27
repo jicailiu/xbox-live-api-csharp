@@ -50,15 +50,17 @@
     <Compile Include="$(MSBuildThisFileDirectory)GameServerPlatform\GameServerTicketStatus.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)GameServerPlatform\GameVariant.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)GameServerPlatform\QualityOfServiceServer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Leaderboard\LeaderboardStatType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared\IXboxWebsocketClient.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SignInCompletedEventArgs.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Stats\LeaderboardResultEventArgs.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Stats\Manager\StatEventType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Stats\Manager\StatValueType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Stats\StatEventArgs.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\AuthConfig.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IUserImpl.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TokenAndSignatureResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpCallRequestMessage.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)HttpCallResponseBodyType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpMethod.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpRequestMessageType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IXboxLiveUser.cs" />
@@ -68,8 +70,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Leaderboard\LeaderboardQuery.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Leaderboard\LeaderboardResponse.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Leaderboard\LeaderboardColumn.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Leaderboard\LeaderboardRequest.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Leaderboard\LeaderboardRequestType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Leaderboard\LeaderboardResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Leaderboard\LeaderboardRow.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Leaderboard\LeaderboardService.cs" />
@@ -174,8 +174,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Shared\CallBufferTimer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SignInResult.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SignInStatus.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SignInUIEmphasisFeature.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SignInUIGameCategory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SignOutCompletedEventArgs.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Social\Manager\EventQueue.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Social\Manager\InternalEventQueue.cs" />
@@ -254,7 +252,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)XboxLiveContextRecommendedSetting.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)XboxLiveContextSettings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)XboxLiveContextThrottleSetting.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)XboxLiveEndpoint.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)XboxLiveHttpRequest.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)XboxLiveHttpResponse.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)XboxLiveLogCallEventArgs.cs" />

@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-// 
+
 namespace Microsoft.Xbox.Services
 {
     using global::System;
@@ -26,7 +26,6 @@ namespace Microsoft.Xbox.Services
 
         public static XboxLiveHttpResponse GetMockResponse(XboxLiveHttpRequest request)
         {
-            XboxLiveHttpResponse response;
             XboxLiveHttpRequestEqualityComparer comparer = new XboxLiveHttpRequestEqualityComparer();
             foreach (var mockData in MockResponses.Values)
             {
@@ -49,8 +48,6 @@ namespace Microsoft.Xbox.Services
         {
             public MockXboxLiveHttpRequest Request { get; set; }
             public MockXboxLiveHttpResponse Response { get; set; }
-
-            
         }
     }
 }

@@ -1,80 +1,53 @@
 // Copyright (c) Microsoft Corporation
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-// 
+
 namespace Microsoft.Xbox.Services.Leaderboard
 {
-    using global::System;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
-
     public class LeaderboardQuery
     {
-
-        public bool SkipResultToMe
+        /// <summary>
+        /// Create a new query
+        /// </summary>
+        public LeaderboardQuery()
         {
-            get;
-            set;
         }
 
-        public uint SkipResultsToRank
+        /// <summary>
+        /// Create a continuation query from an existing query combined with a continuation token.
+        /// </summary>
+        /// <param name="query">The query that this continuation query is based on.</param>
+        /// <param name="continuationToken">The continuation token for the next request.</param>
+        public LeaderboardQuery(LeaderboardQuery query, string continuationToken)
         {
-            get;
-            set;
+            this.StatName = query.StatName;
+            this.SocialGroup = query.SocialGroup;
+            this.MaxItems = query.MaxItems;
+            this.Order = query.Order;
+            this.SkipResultsToRank = query.SkipResultsToRank;
+            this.SkipResultToMe = query.SkipResultToMe;
+            this.ContinuationToken = continuationToken;
         }
 
-        public uint MaxItems
-        {
-            get;
-            set;
-        }
+        public string StatName { get; set; }
 
-        public SortOrder Order
-        {
-            get;
-            set;
-        }
+        public string SocialGroup { get; set; }
 
-        public string StatName
-        {
-            get;
-            internal set;
-        }
+        public uint MaxItems { get; set; }
 
-        public string SocialGroup
-        {
-            get;
-            internal set;
-        }
+        public SortOrder Order { get; set; }
+
+        public bool SkipResultToMe { get; set; }
+
+        public uint SkipResultsToRank { get; set; }
+
+        internal string ContinuationToken { get; set; }
 
         public bool HasNext
         {
             get
             {
-                if (string.IsNullOrEmpty(ContinuationToken))
-                {
-                    return false;
-                }
-
-                return true;
+                return !string.IsNullOrEmpty(this.ContinuationToken);
             }
         }
-
-        internal string ContinuationToken
-        {
-            get;
-            set;
-        }
-        public LeaderboardQuery()
-        {
-        }
-
-        public LeaderboardQuery(LeaderboardQuery query)
-        {
-            this.MaxItems = query.MaxItems;
-            this.Order = query.Order;
-            this.SkipResultsToRank = query.SkipResultsToRank;
-            this.SkipResultToMe = query.SkipResultToMe;
-        }
-
     }
 }

@@ -27,11 +27,7 @@ namespace Microsoft.Xbox.Services
 
         public byte[] ResponseBodyVector { get; private set; }
 
-        public string ResponseBodyJson { get; private set; }
-
         public string ResponseBodyString { get; private set; }
-
-        public HttpCallResponseBodyType BodyType { get; private set; }
 
         public HttpWebResponse response;
 
@@ -39,19 +35,18 @@ namespace Microsoft.Xbox.Services
         {
         }
 
-        internal XboxLiveHttpResponse(HttpWebResponse response, HttpCallResponseBodyType bodyType)
+        internal XboxLiveHttpResponse(HttpWebResponse response)
         {
             this.response = response;
             using (Stream body = response.GetResponseStream())
             {
-                this.Initialize((int)response.StatusCode, body, bodyType, response.ContentLength, "utf-8", response.Headers);
+                this.Initialize((int)response.StatusCode, body, response.ContentLength, "utf-8", response.Headers);
             }
         }
 
-        protected void Initialize(int httpStatus, Stream body, HttpCallResponseBodyType bodyType, long contentLength, string characterSet, WebHeaderCollection headers)
+        protected void Initialize(int httpStatus, Stream body, long contentLength, string characterSet, WebHeaderCollection headers)
         {
             this.HttpStatus = httpStatus;
-            this.BodyType = bodyType;
             this.Headers = new Dictionary<string, string>();
 
             int vectorSize = contentLength > int.MaxValue ? int.MaxValue : (int)contentLength;
@@ -88,14 +83,7 @@ namespace Microsoft.Xbox.Services
                         break;
                 }
 
-                using (MemoryStream ms = new MemoryStream(this.ResponseBodyVector))
-                {
-                    using (StreamReader sr = new StreamReader(ms, encoding))
-                    {
-                        this.ResponseBodyString = sr.ReadToEnd();
-                        this.ResponseBodyJson = this.ResponseBodyString;
-                    }
-                }
+                this.ResponseBodyString = encoding.GetString(this.ResponseBodyVector);
             }
 
             for (int i = 0; i < headers.Count; ++i)

@@ -14,12 +14,13 @@ namespace Microsoft.Xbox.Services.System
     using global::System.Linq;
     using global::System.Text;
     using global::System.Threading.Tasks;
-    using global::System.Diagnostics.Tracing;
     using global::System.Collections.Concurrent;
 
     internal class UserImpl : IUserImpl
     {
         private static bool? isMultiUserSupported;
+        private static CoreDispatcher dispatcher;
+
         private WebAccountProvider provider;
         private readonly object userImplLock = new object();
         private User creationContext;
@@ -36,7 +37,13 @@ namespace Microsoft.Xbox.Services.System
         public string WebAccountId { get; private set; }
         public AuthConfig AuthConfig { get; private set; }
 
-        private XboxLiveAppConfiguration appConfig;
+        public static CoreDispatcher Dispatcher
+        {
+            get
+            {
+                return dispatcher ?? (dispatcher = Windows.ApplicationModel.Core.CoreApplication.MainView.Dispatcher);
+            }
+        }
 
         private readonly EventHandler<SignInCompletedEventArgs> signInCompleted;
         private readonly EventHandler<SignOutCompletedEventArgs> signOutCompleted;
@@ -46,15 +53,15 @@ namespace Microsoft.Xbox.Services.System
         {
             this.signInCompleted = signInCompleted;
             this.signOutCompleted = signOutCompleted;
-            this.appConfig = XboxLiveAppConfiguration.Instance;
             this.creationContext = systemUser;
 
+            var appConfig = XboxLiveAppConfiguration.Instance;
             this.AuthConfig = new AuthConfig
             {
-                Sandbox = this.appConfig.Sandbox,
-                EnvrionmentPrefix = this.appConfig.EnvironmentPrefix,
-                Envrionment = this.appConfig.Environment,
-                UseCompactTicket = this.appConfig.UseFirstPartyToken
+                Sandbox = appConfig.Sandbox,
+                EnvrionmentPrefix = appConfig.EnvironmentPrefix,
+                Envrionment = appConfig.Environment,
+                UseCompactTicket = appConfig.UseFirstPartyToken
             };
         }
 
@@ -125,10 +132,10 @@ namespace Microsoft.Xbox.Services.System
             }
 
 
-            if (!XboxLiveContextSettings.Dispatcher.HasThreadAccess)
+            if (!Dispatcher.HasThreadAccess)
             {
                 // We're not on the UI thread, so we'll use the dispatcher to make our call.
-                IAsyncAction uiTask = XboxLiveContextSettings.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => this.InitializeProvider(taskCompletion));
+                IAsyncAction uiTask = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => this.InitializeProvider(taskCompletion));
             }
             else
             {
@@ -237,7 +244,7 @@ namespace Microsoft.Xbox.Services.System
             }
 
             TokenAndSignatureResult tokenAndSignatureReturnResult = null;
-            var tokenResult = this.RequestTokenFromIDP(XboxLiveContextSettings.Dispatcher, promptForCredentialsIfNeeded, request);
+            var tokenResult = this.RequestTokenFromIDP(Dispatcher, promptForCredentialsIfNeeded, request);
             try
             {
                 tokenAndSignatureReturnResult = this.ConvertWebTokenRequestResult(tokenResult);
@@ -247,7 +254,7 @@ namespace Microsoft.Xbox.Services.System
                     throw new Exception("User has switched"); // todo: auth_user_switched
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // log
             }

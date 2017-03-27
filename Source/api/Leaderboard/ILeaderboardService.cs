@@ -1,32 +1,18 @@
 // Copyright (c) Microsoft Corporation
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-// 
+
 namespace Microsoft.Xbox.Services.Leaderboard
 {
-    using global::System;
-    using global::System.Collections.Generic;
-    using global::System.Text;
     using global::System.Threading.Tasks;
-    using Newtonsoft.Json.Linq;
-    using Social.Models;
-    using System;
 
     internal interface ILeaderboardService
     {
         /// <summary>
-        /// Get a leaderboard for a single leaderboard given a stat name and query parameters.
+        /// Get a leaderboard for a user.
         /// </summary>
-        /// <param name="statName">Stat name of the leaderboard</param>
-        /// <param name="quert">An object that contains query information</param>
-        /// <returns>
-        /// A LeaderboardResult object containing a collection of the leaderboard columns and rows
-        /// </returns>
-        /// <remarks>
-        /// This stat needs to be configured on DevCenter for your title
-        /// </remarks>
-        Task<LeaderboardResult> GetLeaderboardAsync(string statName, LeaderboardQuery query);
-
-        Task<LeaderboardResult> GetSocialLeaderboardAsync(string statName, string socialGroup, LeaderboardQuery query);
-
+        /// <param name="user">The specific user to fetch the leaderboard for..</param>
+        /// <param name="query">Additional leaderboard query information</param>
+        /// <returns>A <see cref="LeaderboardResult"/> object containing the leaderboard data.</returns>
+        Task<LeaderboardResult> GetLeaderboardAsync(XboxLiveUser user, LeaderboardQuery query);
     }
 }

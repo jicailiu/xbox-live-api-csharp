@@ -1,19 +1,8 @@
 // Copyright (c) Microsoft Corporation
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-// 
-using System;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Microsoft.Xbox.Services.Stats.Manager
 {
-    public enum StatValueType
-    {
-        Number,
-        String
-    }
-
     public class StatValue
     {
         public string Name { get; set; }
@@ -22,28 +11,30 @@ namespace Microsoft.Xbox.Services.Stats.Manager
 
         internal StatValue(string name, object value, StatValueType type)
         {
-            Name = name;
-            Value = value;
-            Type = type;
+            this.Name = name;
+            this.Value = value;
+            this.Type = type;
         }
 
         public int AsInteger()
         {
-            return (int)(double)Value;
+            return (int)(double)this.Value;
         }
+
         public string AsString()
         {
-            return (string)Value;
+            return (string)this.Value;
         }
+
         public double AsNumber()
         {
-            return (double)Value;
+            return (double)this.Value;
         }
 
         internal void SetStat(object value, StatValueType type)
         {
-            Value = value;
-            Type = type;
+            this.Value = value;
+            this.Type = type;
         }
     }
 }

@@ -85,7 +85,7 @@ namespace Microsoft.Xbox.Services
 
         public string RequestBody { get; set; }
 
-        public Task<XboxLiveHttpResponse> GetResponseWithAuth(XboxLiveUser user, HttpCallResponseBodyType httpCallResponseBodyType)
+        public Task<XboxLiveHttpResponse> GetResponseWithAuth(XboxLiveUser user)
         {
             TaskCompletionSource<XboxLiveHttpResponse> getResponseCompletionSource = new TaskCompletionSource<XboxLiveHttpResponse>();
 
@@ -107,7 +107,7 @@ namespace Microsoft.Xbox.Services
                     this.SetCustomHeader(SignatureHeaderName, tokenTask.Result.Signature);
                     try
                     {
-                        this.GetResponseWithoutAuth(httpCallResponseBodyType).ContinueWith(getResponseTask =>
+                        this.GetResponseWithoutAuth().ContinueWith(getResponseTask =>
                         {
                             if (getResponseTask.IsFaulted)
                             {
@@ -126,7 +126,7 @@ namespace Microsoft.Xbox.Services
             return getResponseCompletionSource.Task;
         }
 
-        public virtual Task<XboxLiveHttpResponse> GetResponseWithoutAuth(HttpCallResponseBodyType httpCallResponseBodyType)
+        public virtual Task<XboxLiveHttpResponse> GetResponseWithoutAuth()
         {
             if (!string.IsNullOrEmpty(this.ContractVersion))
             {
@@ -153,7 +153,7 @@ namespace Microsoft.Xbox.Services
                             return;
                         }
 
-                        var response = new XboxLiveHttpResponse((HttpWebResponse)getResponseTask.Result, httpCallResponseBodyType);
+                        var response = new XboxLiveHttpResponse((HttpWebResponse)getResponseTask.Result);
                         getResponseCompletionSource.SetResult(response);
                     });
             });

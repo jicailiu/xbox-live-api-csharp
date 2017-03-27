@@ -17,13 +17,13 @@ namespace Microsoft.Xbox.Services.Social.Manager
     {
         private readonly XboxLiveContextSettings httpCallSettings;
         private readonly XboxLiveAppConfiguration appConfig;
-        private readonly string peopleHubHost;
+        private readonly string peopleHubEndpoint;
 
         public PeopleHubService(XboxLiveContextSettings httpCallSettings, XboxLiveAppConfiguration appConfig)
         {
             this.httpCallSettings = httpCallSettings;
             this.appConfig = appConfig;
-            this.peopleHubHost = XboxLiveEndpoint.GetEndpointForService("peoplehub", appConfig);
+            this.peopleHubEndpoint = appConfig.GetEndpointForService("peoplehub");
         }
 
         /// <summary>
@@ -55,12 +55,12 @@ namespace Microsoft.Xbox.Services.Social.Manager
             XboxLiveHttpRequest request = XboxLiveHttpRequest.Create(
                 this.httpCallSettings,
                 HttpMethod.Get,
-                this.peopleHubHost,
+                this.peopleHubEndpoint,
                 path);
 
             request.ContractVersion = "1";
 
-            return request.GetResponseWithAuth(user, HttpCallResponseBodyType.JsonBody)
+            return request.GetResponseWithAuth(user)
                 .ContinueWith(responseTask =>
                 {
                     var response = responseTask.Result;
@@ -100,7 +100,7 @@ namespace Microsoft.Xbox.Services.Social.Manager
             XboxLiveHttpRequest request = XboxLiveHttpRequest.Create(
                 this.httpCallSettings,
                 isBatch ? HttpMethod.Post : HttpMethod.Get,
-                this.peopleHubHost,
+                this.peopleHubEndpoint,
                 pathAndQuery);
 
             request.ContractVersion = "1";
@@ -111,7 +111,7 @@ namespace Microsoft.Xbox.Services.Social.Manager
                 request.RequestBody = postBody.ToString(Formatting.None);
             }
 
-            return request.GetResponseWithAuth(user, HttpCallResponseBodyType.JsonBody)
+            return request.GetResponseWithAuth(user)
                 .ContinueWith(responseTask =>
                 {
                     var response = responseTask.Result;

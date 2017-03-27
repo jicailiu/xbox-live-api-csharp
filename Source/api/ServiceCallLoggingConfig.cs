@@ -1,22 +1,13 @@
 // Copyright (c) Microsoft Corporation
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-// 
-using System;
-using System.Linq;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Microsoft.Xbox.Services
 {
+    using global::System;
+
     public class ServiceCallLoggingConfig
     {
-
-        public static ServiceCallLoggingConfig SingletonInstance
-        {
-            get;
-            private set;
-        }
-
+        public static ServiceCallLoggingConfig SingletonInstance { get; private set; }
 
         public void Enable()
         {
@@ -32,6 +23,5 @@ namespace Microsoft.Xbox.Services
         {
             throw new NotImplementedException();
         }
-
     }
 }

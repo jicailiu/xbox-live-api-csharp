@@ -86,21 +86,10 @@ namespace Microsoft.Xbox.Services.Stats.Manager
         /// the leaderboard result will come back in an event in the do_work loop.
         /// </summary>
         /// <param name="user">The local user whose stats to access</param>
-        /// <param name="statName">Stat name of the leaderboard</param>
         /// <param name="query">An object that contains query information</param>
         /// <remarks>
         /// This stat needs to be configured on DevCenter for your title
         /// </remarks>
-        void GetLeaderboard(XboxLiveUser user, string statName, LeaderboardQuery query);
-
-        /// <summary>
-        /// Get a leaderboard for a single leaderboard given a stat name for a social group and query parameters. 
-        /// the leaderboard result will come back in an event in the do_work loop.
-        /// </summary>
-        /// <param name="user">The local user whose stats to access</param>
-        /// <param name="statName">Stat name of the leaderboard</param>
-        /// <param name="socialGroup">Social Group of the leaderboard. For Example all is everybody</param>
-        /// <param name="query">An object that contains query information</param>
-        void GetSocialLeaderboard(XboxLiveUser user, string statName, string socialGroup, LeaderboardQuery query);
+        void GetLeaderboard(XboxLiveUser user, LeaderboardQuery query);
     }
 }

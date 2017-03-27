@@ -16,7 +16,7 @@ namespace Microsoft.Xbox.Services
         {
         }
 
-        public override Task<XboxLiveHttpResponse> GetResponseWithoutAuth(HttpCallResponseBodyType httpCallResponseBodyType)
+        public override Task<XboxLiveHttpResponse> GetResponseWithoutAuth()
         {
             // Save the mock data out for testing.
             string requestData = JsonConvert.SerializeObject(this, Formatting.Indented);

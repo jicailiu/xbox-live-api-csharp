@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft Corporation
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-// 
+
 namespace Microsoft.Xbox.Services.Social.Manager
 {
     using global::System;
@@ -8,19 +8,7 @@ namespace Microsoft.Xbox.Services.Social.Manager
     using global::System.Threading;
     using global::System.Threading.Tasks;
 
-    internal struct UserGroupStatusChange
-    {
-        public IList<string> addGroup;
-        public IList<ulong> removeGroup;
-    }
-
-    internal struct FireTimerCompletionContext
-    {
-        public bool isNull;
-        public uint context;
-        public int numObjects;
-        public TaskCompletionSource<object> tce;
-    }
+    using Microsoft.Xbox.Services.Presence;
 
     internal class RtaTriggerTimer
     {
@@ -38,9 +26,7 @@ namespace Microsoft.Xbox.Services.Social.Manager
         {
         }
 
-        private RtaTriggerTimer(
-            Action<List<string>, FireTimerCompletionContext> callback
-        )
+        private RtaTriggerTimer(Action<List<string>, FireTimerCompletionContext> callback)
         {
             throw new NotImplementedException();
         }
@@ -61,9 +47,23 @@ namespace Microsoft.Xbox.Services.Social.Manager
         }
     }
 
+    internal struct UserGroupStatusChange
+    {
+        public IList<string> addGroup;
+        public IList<ulong> removeGroup;
+    }
+
+    internal struct FireTimerCompletionContext
+    {
+        public bool isNull;
+        public uint context;
+        public int numObjects;
+        public TaskCompletionSource<object> tce;
+    }
+
     internal struct XboxSocialUserSubscriptions
     {
-        //std::shared_ptr<xbox::services::presence::device_presence_change_subscription> devicePresenceChangeSubscription;
-        //std::shared_ptr<xbox::services::presence::title_presence_change_subscription> titlePresenceChangeSubscription;
+        public DevicePresenceChangeSubscription DevicePresenceChangeSubscription;
+        public TitlePresenceChangeSubscription TitlePresenceChangeSubscription;
     }
 }

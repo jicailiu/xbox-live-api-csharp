@@ -15,109 +15,127 @@ namespace UWPIntegration
     using Microsoft.Xbox.Services.Social.Manager;
     using Microsoft.Xbox.Services.Stats.Manager;
     using System.Collections.Generic;
+    using System.ComponentModel;
+    using System.Runtime.CompilerServices;
 
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
-    public sealed partial class MainPage : Page
+    public sealed partial class MainPage : Page, INotifyPropertyChanged
     {
-        private readonly XboxLiveUser xblUser;
+        private int jumps;
+        private LeaderboardResult leaderboard;
+        private readonly XboxLiveUser user;
 
         public MainPage()
         {
             this.InitializeComponent();
-            this.xblUser = new XboxLiveUser();
+            this.user = new XboxLiveUser();
+        }
+
+        public LeaderboardResult Leaderboard
+        {
+            get
+            {
+                return this.leaderboard;
+            }
+            set
+            {
+                this.leaderboard = value;
+                this.OnPropertyChanged();
+            }
+        }
+
+        public XboxLiveUser User
+        {
+            get
+            {
+                return this.user;
+            }
         }
 
         private async void button_Click(object sender, RoutedEventArgs e)
         {
-            var signInResult = await this.xblUser.SignInAsync();
+            var signInResult = await this.user.SignInAsync();
 
             await Windows.ApplicationModel.Core.CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
             {
                 if (signInResult.Status == SignInStatus.Success)
                 {
-                    this.textBlock.Text = this.xblUser.Gamertag;
-                    StatsManager.Singleton.AddLocalUser(this.xblUser);
-                    SocialManager.Instance.AddLocalUser(this.xblUser, SocialManagerExtraDetailLevel.None);
-                }
-                else
-                {
-                    this.textBlock.Text = "Not Signed In";
+                    this.OnPropertyChanged("User");
+                    StatsManager.Instance.AddLocalUser(this.user);
+                    SocialManager.Instance.AddLocalUser(this.user, SocialManagerExtraDetailLevel.None);
                 }
             });
         }
 
-        private int jumps;
-
-        private async void globalLeaderboardButton_Click(object sender, RoutedEventArgs e)
+        private void globalLeaderboardButton_Click(object sender, RoutedEventArgs e)
         {
-            if (this.xblUser.IsSignedIn)
+            if (this.user.IsSignedIn)
             {
-                LeaderboardQuery query = new LeaderboardQuery();
-                query.MaxItems = 1;
-                StatsManager.Singleton.GetLeaderboard(this.xblUser, "jumps", query);
+                LeaderboardQuery query = new LeaderboardQuery
+                {
+                    MaxItems = 3,
+                    StatName = "jumps"
+                };
+                StatsManager.Instance.GetLeaderboard(this.user, query);
             }
         }
 
-        private async void socialLeaderboardButton_Click(object sender, RoutedEventArgs e)
+        private void socialLeaderboardButton_Click(object sender, RoutedEventArgs e)
         {
-            if (this.xblUser.IsSignedIn)
+            if (this.user.IsSignedIn)
             {
-                LeaderboardQuery query = new LeaderboardQuery();
-                query.MaxItems = 1;
-                StatsManager.Singleton.GetSocialLeaderboard(this.xblUser, "headshots", "all", query);
+                LeaderboardQuery query = new LeaderboardQuery
+                {
+                    MaxItems = 3,
+                    SocialGroup = "all",
+                    StatName = "headshots"
+                };
+                StatsManager.Instance.GetLeaderboard(this.user, query);
             }
         }
 
         private void WriteStats_Click(object sender, RoutedEventArgs e)
         {
-            if (!this.xblUser.IsSignedIn) return;
+            if (!this.user.IsSignedIn) return;
 
-            StatsManager.Singleton.SetStatAsInteger(this.xblUser, "headshots", this.jumps++);
+            StatsManager.Instance.SetStatAsInteger(this.user, "headshots", this.jumps++);
         }
 
         private void ReadStats_Click(object sender, RoutedEventArgs e)
         {
-            if (!this.xblUser.IsSignedIn) return;
+            if (!this.user.IsSignedIn) return;
 
-            var statNames = StatsManager.Singleton.GetStatNames(this.xblUser);
-            this.StatsData.Text = string.Join(Environment.NewLine, statNames.Select(n => StatsManager.Singleton.GetStat(this.xblUser, n)).Select(s => $"{s.Name} ({s.Type}) = {s.Value}"));
+            var statNames = StatsManager.Instance.GetStatNames(this.user);
+            this.StatsData.Text = string.Join(Environment.NewLine, statNames.Select(n => StatsManager.Instance.GetStat(this.user, n)).Select(s => $"{s.Name} ({s.Type}) = {s.Value}"));
         }
 
-        private async void StatsDoWork_Click(object sender, RoutedEventArgs e)
+        private void StatsDoWork_Click(object sender, RoutedEventArgs e)
         {
-            if (!this.xblUser.IsSignedIn) return;
+            if (!this.user.IsSignedIn) return;
 
-            List<StatEvent> events = StatsManager.Singleton.DoWork();
+            List<StatEvent> events = StatsManager.Instance.DoWork();
             foreach (StatEvent ev in events)
             {
                 if (ev.EventType == StatEventType.GetLeaderboardComplete)
                 {
                     LeaderboardResult result = ((LeaderboardResultEventArgs)ev.EventArgs).Result;
-
-                    await Windows.ApplicationModel.Core.CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
-                    {
-                        this.leaderboardData.Text = "\nrows: " + result.Rows.Count + "\n";
-                        foreach (LeaderboardRow row in result.Rows)
-                        {
-                            this.leaderboardData.Text += row.Gamertag + ": " + row.Rank + " - " + row.Values[0] + "\n";
-                        }
-                    });
+                    this.Leaderboard = result;
 
                     if (result.HasNext)
                     {
-                        if (string.IsNullOrEmpty(result.NextQuery.SocialGroup))
-                        {
-                            StatsManager.Singleton.GetLeaderboard(ev.LocalUser, result.NextQuery.StatName, result.NextQuery);
-                        }
-                        else
-                        {
-                            StatsManager.Singleton.GetSocialLeaderboard(ev.LocalUser, result.NextQuery.StatName, result.NextQuery.SocialGroup, result.NextQuery);
-                        }
+                        StatsManager.Instance.GetLeaderboard(ev.LocalUser, result.NextQuery);
                     }
                 }
             }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

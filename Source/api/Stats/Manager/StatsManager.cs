@@ -1,42 +1,37 @@
 // Copyright (c) Microsoft Corporation
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-// 
+
 namespace Microsoft.Xbox.Services.Stats.Manager
 {
     using global::System;
     using global::System.Collections.Generic;
     using global::System.Linq;
 
-    using Microsoft.Xbox.Services.Shared;
     using Microsoft.Xbox.Services.Leaderboard;
-    using global::System.Threading.Tasks;
+    using Microsoft.Xbox.Services.Shared;
 
     public class StatsManager : IStatsManager
     {
-        private class StatsUserContext
-        {
-            public StatsValueDocument statsValueDocument;
-            public XboxLiveContext xboxLiveContext;
-            public StatsService statsService;
-            public XboxLiveUser user;
-        }
-
         private static IStatsManager instance;
         private static readonly TimeSpan TimePerCall = new TimeSpan(0, 0, 5);
-        private readonly Dictionary<string, StatsUserContext> userStatContextMap;
+
+        private readonly Dictionary<string, StatsValueDocument> userDocumentMap;
         private readonly List<StatEvent> eventList;
         private readonly CallBufferTimer statTimer;
         private readonly CallBufferTimer statPriorityTimer;
 
+        private readonly StatsService statsService;
+        private readonly LeaderboardService leaderboardService;
+
         private void CheckUserValid(XboxLiveUser user)
         {
-            if (user == null || user.XboxUserId == null || !this.userStatContextMap.ContainsKey(user.XboxUserId))
+            if (user == null || user.XboxUserId == null || !this.userDocumentMap.ContainsKey(user.XboxUserId))
             {
                 throw new ArgumentException("user");
             }
         }
 
-        public static IStatsManager Singleton
+        public static IStatsManager Instance
         {
             get
             {
@@ -46,7 +41,7 @@ namespace Microsoft.Xbox.Services.Stats.Manager
 
         private StatsManager()
         {
-            this.userStatContextMap = new Dictionary<string, StatsUserContext>();
+            this.userDocumentMap = new Dictionary<string, StatsValueDocument>();
             this.eventList = new List<StatEvent>();
 
             this.statTimer = new CallBufferTimer(TimePerCall);
@@ -54,6 +49,10 @@ namespace Microsoft.Xbox.Services.Stats.Manager
 
             this.statPriorityTimer = new CallBufferTimer(TimePerCall);
             this.statPriorityTimer.TimerCompleteEvent += this.CallBufferTimerCallback;
+
+            XboxLiveContextSettings settings = new XboxLiveContextSettings();
+            this.statsService = new StatsService(settings, XboxLiveAppConfiguration.Instance);
+            this.leaderboardService = new LeaderboardService(settings, XboxLiveAppConfiguration.Instance);
         }
 
         public void AddLocalUser(XboxLiveUser user)
@@ -64,41 +63,31 @@ namespace Microsoft.Xbox.Services.Stats.Manager
             }
 
             string xboxUserId = user.XboxUserId;
-            if (this.userStatContextMap.ContainsKey(xboxUserId))
+            if (this.userDocumentMap.ContainsKey(xboxUserId))
             {
                 throw new ArgumentException("User already in map");
             }
 
-            var context = new StatsUserContext();
-            this.userStatContextMap.Add(xboxUserId, context);
+            this.userDocumentMap.Add(xboxUserId, new StatsValueDocument(null));
 
-            var xboxLiveContext = new XboxLiveContext(user);
-            var statsService = new StatsService(xboxLiveContext);
-
-            context.xboxLiveContext = xboxLiveContext;
-            context.statsService = statsService;
-            context.user = user;
-            context.statsValueDocument = new StatsValueDocument(null);
-
-            statsService.GetStatsValueDocument().ContinueWith(statsValueDocTask =>
+            this.statsService.GetStatsValueDocument(user).ContinueWith(statsValueDocTask =>
             {
-                lock (this.userStatContextMap)
+                if (!statsValueDocTask.IsFaulted && user.IsSignedIn)
                 {
-                    if (user.IsSignedIn)
+                    lock (this.userDocumentMap)
                     {
-                        if (statsValueDocTask.IsCompleted)
+                        if (this.userDocumentMap.ContainsKey(xboxUserId))
                         {
-                            if (this.userStatContextMap.ContainsKey(xboxUserId))
+                            StatsValueDocument document = statsValueDocTask.Result;
+                            document.FlushEvent += (sender, e) =>
                             {
-                                this.userStatContextMap[xboxUserId].statsValueDocument = statsValueDocTask.Result;
-                                this.userStatContextMap[xboxUserId].statsValueDocument.FlushEvent += (sender, e) =>
+                                if (this.userDocumentMap.ContainsKey(xboxUserId))
                                 {
-                                    if (this.userStatContextMap.ContainsKey(xboxUserId))
-                                    {
-                                        this.FlushToService(this.userStatContextMap[xboxUserId]);
-                                    }
-                                };
-                            }
+                                    this.FlushToService(user, document);
+                                }
+                            };
+
+                            this.userDocumentMap[xboxUserId] = document;
                         }
                     }
                 }
@@ -111,12 +100,12 @@ namespace Microsoft.Xbox.Services.Stats.Manager
         {
             this.CheckUserValid(user);
             var xboxUserId = user.XboxUserId;
-            var svd = this.userStatContextMap[xboxUserId].statsValueDocument;
+            var svd = this.userDocumentMap[xboxUserId];
             if (svd.IsDirty)
             {
                 svd.DoWork();
                 //var serializedSVD = svd.Serialize();  // write offline
-                this.userStatContextMap[xboxUserId].statsService.UpdateStatsValueDocument(svd).ContinueWith((continuationTask) =>
+                this.statsService.UpdateStatsValueDocument(user, svd).ContinueWith((continuationTask) =>
                 {
                     if (this.ShouldWriteOffline(continuationTask.Exception))
                     {
@@ -131,7 +120,7 @@ namespace Microsoft.Xbox.Services.Stats.Manager
                 this.AddEvent(new StatEvent(StatEventType.LocalUserRemoved, user, null, new StatEventArgs()));
             }
 
-            this.userStatContextMap.Remove(xboxUserId);
+            this.userDocumentMap.Remove(xboxUserId);
         }
 
         public StatValue GetStat(XboxLiveUser user, string statName)
@@ -142,13 +131,13 @@ namespace Microsoft.Xbox.Services.Stats.Manager
                 throw new ArgumentException("statName");
             }
 
-            return this.userStatContextMap[user.XboxUserId].statsValueDocument.GetStat(statName);
+            return this.userDocumentMap[user.XboxUserId].GetStat(statName);
         }
 
         public List<string> GetStatNames(XboxLiveUser user)
         {
             this.CheckUserValid(user);
-            return this.userStatContextMap[user.XboxUserId].statsValueDocument.GetStatNames();
+            return this.userDocumentMap[user.XboxUserId].GetStatNames();
         }
 
         public void SetStatAsNumber(XboxLiveUser user, string statName, double value)
@@ -160,8 +149,8 @@ namespace Microsoft.Xbox.Services.Stats.Manager
                 throw new ArgumentException("statName");
             }
 
-            this.userStatContextMap[user.XboxUserId].statsValueDocument.SetStat(statName, value);
-            RequestFlushToService(user);
+            this.userDocumentMap[user.XboxUserId].SetStat(statName, value);
+            this.RequestFlushToService(user);
         }
 
         public void SetStatAsInteger(XboxLiveUser user, string statName, Int64 value)
@@ -173,8 +162,8 @@ namespace Microsoft.Xbox.Services.Stats.Manager
                 throw new ArgumentException("statName");
             }
 
-            this.userStatContextMap[user.XboxUserId].statsValueDocument.SetStat(statName, value);
-            RequestFlushToService(user);
+            this.userDocumentMap[user.XboxUserId].SetStat(statName, value);
+            this.RequestFlushToService(user);
         }
 
         public void SetStatAsString(XboxLiveUser user, string statName, string value)
@@ -186,17 +175,16 @@ namespace Microsoft.Xbox.Services.Stats.Manager
                 throw new ArgumentException("statName");
             }
 
-            this.userStatContextMap[user.XboxUserId].statsValueDocument.SetStat(statName, value);
-            RequestFlushToService(user);
+            this.userDocumentMap[user.XboxUserId].SetStat(statName, value);
+            this.RequestFlushToService(user);
         }
 
         public void RequestFlushToService(XboxLiveUser user, bool isHighPriority = false)
         {
             this.CheckUserValid(user);
-            this.userStatContextMap[user.XboxUserId].statsValueDocument.DoWork();
+            this.userDocumentMap[user.XboxUserId].DoWork();
 
-            List<string> userVec = new List<string>(1);
-            userVec.Add(user.XboxUserId);
+            List<XboxLiveUser> userVec = new List<XboxLiveUser>(1) { user };
 
             if (isHighPriority)
             {
@@ -210,13 +198,13 @@ namespace Microsoft.Xbox.Services.Stats.Manager
 
         public List<StatEvent> DoWork()
         {
-            lock (this.userStatContextMap)
+            lock (this.userDocumentMap)
             {
                 var copyList = this.eventList.ToList();
 
-                foreach (var userContextPair in this.userStatContextMap)
+                foreach (var userContextPair in this.userDocumentMap)
                 {
-                    userContextPair.Value.statsValueDocument.DoWork();
+                    userContextPair.Value.DoWork();
                 }
 
                 this.eventList.Clear();
@@ -229,16 +217,12 @@ namespace Microsoft.Xbox.Services.Stats.Manager
             return false; // offline not implemented yet
         }
 
-        private void FlushToService(StatsUserContext statsUserContext)
+        private void FlushToService(XboxLiveUser user, StatsValueDocument document)
         {
             //var serializedSVD = statsUserContext.statsValueDocument.Serialize();
-            statsUserContext.statsService.UpdateStatsValueDocument(statsUserContext.statsValueDocument).ContinueWith((continuationTask) =>
+            this.statsService.UpdateStatsValueDocument(user, document).ContinueWith((continuationTask) =>
             {
-#if WINDOWS_UWP
-                if(continuationTask.IsFaulted)
-#else
-                if (continuationTask.Exception == null) // TODO: fix
-#endif
+                if (continuationTask.IsFaulted)
                 {
                     if (this.ShouldWriteOffline(continuationTask.Exception))
                     {
@@ -250,7 +234,7 @@ namespace Microsoft.Xbox.Services.Stats.Manager
                     }
                 }
 
-                this.AddEvent(new StatEvent(StatEventType.StatUpdateComplete, statsUserContext.user, continuationTask.Exception, new StatEventArgs()));
+                this.AddEvent(new StatEvent(StatEventType.StatUpdateComplete, user, continuationTask.Exception, new StatEventArgs()));
             });
         }
 
@@ -270,48 +254,29 @@ namespace Microsoft.Xbox.Services.Stats.Manager
             }
         }
 
-        private void FlushToServiceCallback(string userXuid)
+        private void FlushToServiceCallback(XboxLiveUser user)
         {
-            if (this.userStatContextMap.ContainsKey(userXuid))
+            StatsValueDocument document;
+            if (this.userDocumentMap.TryGetValue(user.XboxUserId, out document) && document.IsDirty)
             {
-                var statsUserContext = this.userStatContextMap[userXuid];
-                var userSVD = statsUserContext.statsValueDocument;
-                if (userSVD.IsDirty)
-                {
-                    userSVD.DoWork();
-                    userSVD.ClearDirtyState();
-                    this.FlushToService(statsUserContext);
-                }
+                document.DoWork();
+                document.ClearDirtyState();
+                this.FlushToService(user, document);
             }
         }
 
-        public void GetLeaderboard(XboxLiveUser user, string statName, LeaderboardQuery query)
+        public void GetLeaderboard(XboxLiveUser user, LeaderboardQuery query)
         {
             this.CheckUserValid(user);
-            this.userStatContextMap[user.XboxUserId].xboxLiveContext.LeaderboardService.GetLeaderboardAsync(statName, query).ContinueWith(responseTask =>
+            this.leaderboardService.GetLeaderboardAsync(user, query).ContinueWith(responseTask =>
             {
-                ((StatsManager)Singleton).AddEvent(
-                    new StatEvent(StatEventType.GetLeaderboardComplete, 
-                    user, 
-                    responseTask.Exception, 
-                    new LeaderboardResultEventArgs(responseTask.Result)
-                    ));
-            });
-        }
-
-        public void GetSocialLeaderboard(XboxLiveUser user, string statName, string socialGroup, LeaderboardQuery query)
-        {
-            this.CheckUserValid(user);
-            this.userStatContextMap[user.XboxUserId].xboxLiveContext.LeaderboardService.GetSocialLeaderboardAsync(statName, socialGroup, query).ContinueWith(responseTask =>
-            {
-                ((StatsManager)Singleton).AddEvent(
+                this.AddEvent(
                     new StatEvent(StatEventType.GetLeaderboardComplete,
-                    user,
-                    responseTask.Exception,
-                    new LeaderboardResultEventArgs(responseTask.Result)
+                        user,
+                        responseTask.Exception,
+                        new LeaderboardResultEventArgs(responseTask.Result)
                     ));
             });
-
         }
     }
 }

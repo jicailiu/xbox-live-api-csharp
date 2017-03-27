@@ -1,20 +1,19 @@
 ﻿// Copyright (c) Microsoft Corporation
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
-// 
-using System;
-using System.Collections.Generic;
-using Microsoft.Xbox.Services.System;
-using System.Linq;
-using Microsoft.Xbox.Services.Leaderboard;
-using global::System.Threading.Tasks;
 
 namespace Microsoft.Xbox.Services.Stats.Manager
 {
+    using global::System;
+    using global::System.Collections.Generic;
+    using global::System.Linq;
+
+    using Microsoft.Xbox.Services.Leaderboard;
+
     class MockStatsManager : IStatsManager
     {
         private StatsValueDocument statValueDocument;
         private List<StatEvent> statEventList;
-        private MockLeaderboardService mockLBService;
+        private MockLeaderboardService leaderboardService;
 
         internal MockStatsManager()
         {
@@ -41,9 +40,9 @@ namespace Microsoft.Xbox.Services.Stats.Manager
                 }
             };
 
-            statValueDocument = new StatsValueDocument(statMap);
+            this.statValueDocument = new StatsValueDocument(statMap);
 
-            statEventList = new List<StatEvent>();
+            this.statEventList = new List<StatEvent>();
         }
 
         public IList<XboxLiveUser> LocalUsers { get; private set; }
@@ -51,82 +50,74 @@ namespace Microsoft.Xbox.Services.Stats.Manager
         public void AddLocalUser(XboxLiveUser user)
         {
             this.LocalUsers.Add(user);
-            mockLBService = new MockLeaderboardService(user, new XboxLiveContextSettings(), XboxLiveAppConfiguration.Instance);
+            this.leaderboardService = new MockLeaderboardService();
             this.statEventList.Add(new StatEvent(StatEventType.LocalUserAdded, user, null, new StatEventArgs()));
         }
+
         public void RemoveLocalUser(XboxLiveUser user)
         {
             this.LocalUsers.Remove(user);
             this.statEventList.Add(new StatEvent(StatEventType.LocalUserRemoved, user, null, new StatEventArgs()));
         }
+
         public StatValue GetStat(XboxLiveUser user, string statName)
         {
-            return statValueDocument.GetStat(statName);
+            return this.statValueDocument.GetStat(statName);
         }
+
         public List<string> GetStatNames(XboxLiveUser user)
         {
-            return statValueDocument.GetStatNames();
+            return this.statValueDocument.GetStatNames();
         }
+
         public void SetStatAsNumber(XboxLiveUser user, string statName, double value)
         {
-            statValueDocument.SetStat(statName, value);
-            RequestFlushToService(user);
+            this.statValueDocument.SetStat(statName, value);
+            this.RequestFlushToService(user);
         }
+
         public void SetStatAsInteger(XboxLiveUser user, string statName, Int64 value)
         {
-            statValueDocument.SetStat(statName, (double)value);
-            RequestFlushToService(user);
+            this.statValueDocument.SetStat(statName, (double)value);
+            this.RequestFlushToService(user);
         }
+
         public void SetStatAsString(XboxLiveUser user, string statName, string value)
         {
-            statValueDocument.SetStat(statName, value);
-            RequestFlushToService(user);
+            this.statValueDocument.SetStat(statName, value);
+            this.RequestFlushToService(user);
         }
+
         public void RequestFlushToService(XboxLiveUser user, bool isHighPriority = false)
         {
-            statValueDocument.DoWork();
+            this.statValueDocument.DoWork();
         }
+
         public List<StatEvent> DoWork()
         {
             var copyList = this.statEventList.ToList();
 
-            statValueDocument.DoWork();
+            this.statValueDocument.DoWork();
             this.statEventList.Clear();
             return copyList;
         }
-        public void GetLeaderboard(XboxLiveUser user, string statName, LeaderboardQuery query)
+
+        public void GetLeaderboard(XboxLiveUser user, LeaderboardQuery query)
         {
-            if (mockLBService == null)
+            if (!this.LocalUsers.Contains(user))
             {
                 throw new ArgumentException("Local User needs to be added.");
             }
-            mockLBService.GetLeaderboardAsync(statName, query).ContinueWith(responseTask =>
+
+            this.leaderboardService.GetLeaderboardAsync(user, query).ContinueWith(responseTask =>
             {
                 this.statEventList.Add(
                     new StatEvent(StatEventType.GetLeaderboardComplete,
-                    user,
-                    responseTask.Exception,
-                    new LeaderboardResultEventArgs(responseTask.Result)
+                        user,
+                        responseTask.Exception,
+                        new LeaderboardResultEventArgs(responseTask.Result)
                     ));
-            }); ;
-        }
-
-        public void GetSocialLeaderboard(XboxLiveUser user, string statName, string socialGroup, LeaderboardQuery query)
-        {
-            if (mockLBService == null)
-            {
-                throw new ArgumentException("Local User needs to be added.");
-            }
-            mockLBService.GetSocialLeaderboardAsync(statName, socialGroup, query).ContinueWith(responseTask =>
-            {
-                this.statEventList.Add(
-                    new StatEvent(StatEventType.GetLeaderboardComplete,
-                    user,
-                    responseTask.Exception,
-                    new LeaderboardResultEventArgs(responseTask.Result)
-                    ));
-            }); ;
-
+            });
         }
     }
 }
