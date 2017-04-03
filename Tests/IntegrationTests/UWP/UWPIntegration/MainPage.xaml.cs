@@ -17,6 +17,7 @@ namespace UWPIntegration
     using System.Collections.Generic;
     using System.ComponentModel;
     using System.Runtime.CompilerServices;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
@@ -24,6 +25,7 @@ namespace UWPIntegration
     public sealed partial class MainPage : Page, INotifyPropertyChanged
     {
         private int jumps;
+        private int headshots;
         private LeaderboardResult leaderboard;
         private readonly XboxLiveUser user;
 
@@ -31,9 +33,10 @@ namespace UWPIntegration
         {
             this.InitializeComponent();
             this.user = new XboxLiveUser();
+            DoWork();
         }
 
-        public LeaderboardResult Leaderboard
+        public LeaderboardResult LeaderboardResult
         {
             get
             {
@@ -54,7 +57,7 @@ namespace UWPIntegration
             }
         }
 
-        private async void button_Click(object sender, RoutedEventArgs e)
+        private async void SignInButton_Click(object sender, RoutedEventArgs e)
         {
             var signInResult = await this.user.SignInAsync();
 
@@ -96,38 +99,69 @@ namespace UWPIntegration
             }
         }
 
-        private void WriteStats_Click(object sender, RoutedEventArgs e)
+        private void WriteGlobalStats_Click(object sender, RoutedEventArgs e)
         {
             if (!this.user.IsSignedIn) return;
-
-            StatsManager.Instance.SetStatAsInteger(this.user, "headshots", this.jumps++);
+            StatsManager.Instance.SetStatAsInteger(this.user, "jumps", ++this.jumps);
         }
 
-        private void ReadStats_Click(object sender, RoutedEventArgs e)
+        private void WriteSocialStats_Click(object sender, RoutedEventArgs e)
         {
             if (!this.user.IsSignedIn) return;
-
-            var statNames = StatsManager.Instance.GetStatNames(this.user);
-            this.StatsData.Text = string.Join(Environment.NewLine, statNames.Select(n => StatsManager.Instance.GetStat(this.user, n)).Select(s => $"{s.Name} ({s.Type}) = {s.Value}"));
+            StatsManager.Instance.SetStatAsInteger(this.user, "headshots", ++this.headshots);
         }
 
-        private void StatsDoWork_Click(object sender, RoutedEventArgs e)
+        private void NextLb_Click(object sender, RoutedEventArgs e)
         {
             if (!this.user.IsSignedIn) return;
 
-            List<StatEvent> events = StatsManager.Instance.DoWork();
-            foreach (StatEvent ev in events)
+            if (this.LeaderboardResult.HasNext)
             {
-                if (ev.EventType == StatEventType.GetLeaderboardComplete)
-                {
-                    LeaderboardResult result = ((LeaderboardResultEventArgs)ev.EventArgs).Result;
-                    this.Leaderboard = result;
+                StatsManager.Instance.GetLeaderboard(this.user, this.LeaderboardResult.NextQuery);
+            }
+        }
 
-                    if (result.HasNext)
+        async void DoWork()
+        {
+            while (true)
+            {
+                if (this.user.IsSignedIn)
+                {
+                    // Perform the long running do work task on a background thread.
+                    var doWorkTask = Task.Run(() => { return StatsManager.Instance.DoWork(); });
+
+                    List<StatEvent> events = await doWorkTask;
+                    foreach (StatEvent ev in events)
                     {
-                        StatsManager.Instance.GetLeaderboard(ev.LocalUser, result.NextQuery);
+                        if (ev.EventType == StatEventType.GetLeaderboardComplete)
+                        {
+                            LeaderboardResult result = ((LeaderboardResultEventArgs)ev.EventArgs).Result;
+                            this.LeaderboardResult = result;
+
+                            NextLbBtn.IsEnabled = result.HasNext;
+                        }
+                    }
+
+                    var statNames = StatsManager.Instance.GetStatNames(this.user);
+                    if (statNames.Count > 0)
+                    {
+                        foreach (var stat in statNames)
+                        {
+                            if (string.Equals(stat, "headshots"))
+                            {
+                                this.headshots = StatsManager.Instance.GetStat(this.user, "headshots").AsInteger();
+                            }
+                            else if (string.Equals(stat, "jumps"))
+                            {
+                                this.jumps = StatsManager.Instance.GetStat(this.user, "jumps").AsInteger();
+                            }
+                        }
+                        this.StatsData.Text = string.Join(Environment.NewLine, statNames.Select(n => StatsManager.Instance.GetStat(this.user, n)).Select(s => $"{s.Name} ({s.Type}) = {s.Value}"));
                     }
                 }
+
+                // don't run again for at least 200 milliseconds
+                await Task.Delay(200);
             }
         }
 

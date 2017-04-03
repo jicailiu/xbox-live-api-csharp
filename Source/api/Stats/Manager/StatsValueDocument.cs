@@ -12,29 +12,47 @@ namespace Microsoft.Xbox.Services.Stats.Manager
 {
     public class StatsValueDocument
     {
-        class StatPendingState
+        internal enum StatValueDocumentState
+        {
+            NotLoaded,
+            Loaded,
+            OfflineNotLoaded,
+            OfflineLoaded
+        }
+
+        private enum StatPendingEventType
+        {
+            StatChange,
+            StatDelete
+        }
+
+        private class StatPendingState
         {
             public string Name { get; set; }
             public object Value { get; set; }
             public StatValueType Type { get; set; }
+            public StatPendingEventType PendingEventType { get; set; }
         }
 
-        private List<StatPendingState> eventList;
+        private List<StatPendingState> pendingEventList;
 
         internal bool IsDirty { get; private set; }
         internal int Revision { get; set; }
+        internal StatValueDocumentState State { get; set; }
+        internal XboxLiveUser User { get; set; }
         internal Dictionary<string, StatValue> Stats { get; private set; }
 
         public EventHandler FlushEvent;
 
-        internal StatsValueDocument(Dictionary<string, Models.Stat> statMap)
+        internal StatsValueDocument(Dictionary<string, Models.Stat> statMap, int revision = 0)
         {
-            IsDirty = false;
-            this.eventList = new List<StatPendingState>();
+            this.IsDirty = false;
+            this.pendingEventList = new List<StatPendingState>();
+            this.Revision = revision;
 
             if (statMap != null)
             {
-                Stats = new Dictionary<string, StatValue>(statMap.Count);
+                this.Stats = new Dictionary<string, StatValue>(statMap.Count);
 
                 foreach (var stat in statMap)
                 {
@@ -47,71 +65,85 @@ namespace Microsoft.Xbox.Services.Stats.Manager
                     {
                         statValue = new StatValue(stat.Key, stat.Value.Value, StatValueType.Number);
                     }
-                    Stats.Add(stat.Key, statValue);
+                    this.Stats.Add(stat.Key, statValue);
                 }
             }
             else
             {
-                Stats = new Dictionary<string, StatValue>();
+                this.Stats = new Dictionary<string, StatValue>();
             }
         }
 
         internal StatValue GetStat(string statName)
         {
-            lock (Stats)
+            lock (this.Stats)
             {
                 StatValue returnVal;
-                Stats.TryGetValue(statName, out returnVal);
+                this.Stats.TryGetValue(statName, out returnVal);
                 return returnVal;
             }
         }
 
         internal void SetStat(string statName, double statValue)
         {
-            lock (Stats)
+            lock (this.Stats)
             {
-                IsDirty = true;
                 StatPendingState statPendingState = new StatPendingState()
                 {
                     Name = statName,
                     Value = statValue,
-                    Type = StatValueType.Number
+                    Type = StatValueType.Number,
+                    PendingEventType = StatPendingEventType.StatChange
                 };
 
-                this.eventList.Add(statPendingState);
+                this.pendingEventList.Add(statPendingState);
             }
         }
 
         internal void SetStat(string statName, string statValue)
         {
-            lock (Stats)
+            lock (this.Stats)
             {
-                IsDirty = true;
                 StatPendingState statPendingState = new StatPendingState()
                 {
                     Name = statName,
                     Value = statValue,
-                    Type = StatValueType.String
+                    Type = StatValueType.String,
+                    PendingEventType = StatPendingEventType.StatChange
                 };
 
-                this.eventList.Add(statPendingState);
+                this.pendingEventList.Add(statPendingState);
+            }
+        }
+
+        internal void DeleteStat(string statName)
+        {
+            lock (this.Stats)
+            {
+                StatPendingState statPendingState = new StatPendingState()
+                {
+                    Name = statName,
+                    PendingEventType = StatPendingEventType.StatDelete
+                };
+
+                this.pendingEventList.Add(statPendingState);
             }
         }
 
         internal void ClearDirtyState()
         {
-            lock (Stats)
+            lock (this.Stats)
             {
-                IsDirty = false;
+                this.IsDirty = false;
             }
         }
 
         internal List<string> GetStatNames()
         {
-            lock (Stats)
+            lock (this.Stats)
             {
-                List<string> statNameList = new List<string>(Stats.Count);
-                foreach (var statPair in Stats)
+                List<string> statNameList = new List<string>(this.Stats.Count);
+                foreach (var statPair in this.Stats)
                 {
                     statNameList.Add(statPair.Key);
                 }
@@ -122,23 +154,73 @@ namespace Microsoft.Xbox.Services.Stats.Manager
 
         internal void DoWork()
         {
-            lock (Stats)
+            if (this.State != StatValueDocumentState.NotLoaded)
             {
-                foreach (var svdEvent in this.eventList)
+                lock (this.Stats)
                 {
-                    if (!Stats.ContainsKey(svdEvent.Name))
+                    foreach (var svdEvent in this.pendingEventList)
                     {
-                        var statValue = new StatValue(svdEvent.Name, svdEvent.Value, svdEvent.Type);
-                        Stats.Add(svdEvent.Name, statValue);
-                    }
-                    else
-                    {
-                        Stats[svdEvent.Name].SetStat(svdEvent.Value, svdEvent.Type);
-                    }
-                }
+                        switch (svdEvent.PendingEventType)
+                        {
+                            case StatPendingEventType.StatChange:
+                                {
+                                    if (!this.Stats.ContainsKey(svdEvent.Name))
+                                    {
+                                        var statValue = new StatValue(svdEvent.Name, svdEvent.Value, svdEvent.Type);
+                                        this.Stats.Add(svdEvent.Name, statValue);
+                                    }
+                                    else
+                                    {
+                                        this.Stats[svdEvent.Name].SetStat(svdEvent.Value, svdEvent.Type);
+                                    }
 
-                this.eventList.Clear();
+                                    this.IsDirty = true;
+                                    break;
+                                }
+
+                            case StatPendingEventType.StatDelete:
+                                {
+                                    this.Stats.Remove(svdEvent.Name);
+                                    break;
+                                }
+                        }
+                    }
+
+                    this.pendingEventList.Clear();
+                }
             }
+        }
+
+        internal void MergeStatDocument(StatsValueDocument mergeStatDocument)
+        {
+            switch (this.State)
+            {
+                case StatValueDocumentState.NotLoaded:
+                    this.Revision = mergeStatDocument.Revision;
+                    this.Stats = mergeStatDocument.Stats;
+                    break;
+
+                // for offline the stat values local override any service values
+                // only add any undefined stats into our list
+                case StatValueDocumentState.OfflineNotLoaded:
+                case StatValueDocumentState.OfflineLoaded:
+                    foreach (var stat in mergeStatDocument.Stats)
+                    {
+                        if (this.Stats.ContainsKey(stat.Key))
+                        {
+                            this.Stats.Add(stat.Key, stat.Value);
+                        }
+                    }
+                    break;
+
+                case StatValueDocumentState.Loaded:
+                    throw new Exception("MergeStatDocument called with state: StatValueDocumentState.Loaded");
+
+                default:
+                    break;
+            }
+
+            this.State = StatValueDocumentState.Loaded;
         }
     }
 }

@@ -15,6 +15,7 @@ namespace Microsoft.Xbox.Services.Stats.Manager
     {
         private readonly XboxLiveContextSettings settings;
         private readonly XboxLiveAppConfiguration config;
+        private readonly JsonSerializerSettings serializerSettings;
 
         private readonly string statsReadEndpoint;
         private readonly string statsWriteEndpoint;
@@ -23,6 +24,7 @@ namespace Microsoft.Xbox.Services.Stats.Manager
         {
             this.config = config;
             this.settings = settings;
+            this.serializerSettings = new JsonSerializerSettings();
 
             this.statsReadEndpoint = config.GetEndpointForService("statsread");
             this.statsWriteEndpoint = config.GetEndpointForService("statswrite");
@@ -39,7 +41,7 @@ namespace Microsoft.Xbox.Services.Stats.Manager
             XboxLiveHttpRequest req = XboxLiveHttpRequest.Create(this.settings, "POST", this.statsWriteEndpoint, pathAndQuery);
             var svdModel = new Models.StatsValueDocumentModel()
             {
-                Revision = statValuePostDocument.Revision,
+                Revision = ++statValuePostDocument.Revision,
                 Timestamp = DateTime.Now,
                 Stats = new Models.Stats()
                 {
@@ -54,18 +56,8 @@ namespace Microsoft.Xbox.Services.Stats.Manager
                     Value = stat.Value.Value
                 });
 
-            req.RequestBody = JsonConvert.SerializeObject(svdModel, new JsonSerializerSettings
-            {
-            });
-
-            return req.GetResponseWithAuth(user).ContinueWith(task =>
-            {
-                XboxLiveHttpResponse response = task.Result;
-                if (response.ErrorCode == 0)
-                {
-                    ++statValuePostDocument.Revision;
-                }
-            });
+            req.RequestBody = JsonConvert.SerializeObject(svdModel, serializerSettings);
+            return req.GetResponseWithAuth(user);
         }
 
         public Task<StatsValueDocument> GetStatsValueDocument(XboxLiveUser user)
@@ -81,9 +73,10 @@ namespace Microsoft.Xbox.Services.Stats.Manager
             {
                 XboxLiveHttpResponse response = task.Result;
                 var svdModel = JsonConvert.DeserializeObject<Models.StatsValueDocumentModel>(response.ResponseBodyString);
-                var svd = new StatsValueDocument(svdModel.Stats.Title)
+                var svd = new StatsValueDocument(svdModel.Stats.Title, svdModel.Revision)
                 {
-                    Revision = svdModel.Revision + 1
+                    State = StatsValueDocument.StatValueDocumentState.Loaded,
+                    User = user
                 };
                 return svd;
             });

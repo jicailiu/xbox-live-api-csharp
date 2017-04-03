@@ -81,6 +81,14 @@ namespace Microsoft.Xbox.Services.Stats.Manager
         /// <return>Whether or not the setting was successful.</return>
         List<string> GetStatNames(XboxLiveUser user);
 
+        /// <summary> 
+        /// Deletes a stat. Will clear stat from service and social leaderboard information
+        /// </summary>
+        /// <param name="user">The local user whose stats to access</param>
+        /// <param name="statName">The name of the statistic to delete</param>
+        /// <return>Whether or not the stat deletion was successful</return>
+        void DeleteStat(XboxLiveUser user, string statName);
+
         /// <summary>
         /// Get a leaderboard for a single leaderboard given a stat name and query parameters. 
         /// the leaderboard result will come back in an event in the do_work loop.

@@ -17,7 +17,7 @@
         </Grid.RowDefinitions>
 
         <StackPanel Orientation="Horizontal">
-            <Button x:Name="button" Content="Sign In" Click="button_Click" Margin="12" Width="100"/>
+            <Button x:Name="button" Content="Sign In" Click="SignInButton_Click" Margin="12" Width="100"/>
             <TextBlock Text="{Binding User.Gamertag}" VerticalAlignment="Center"/>
         </StackPanel>
 
@@ -29,23 +29,28 @@
             </StackPanel>
             <TextBlock>
                 <Run>Showing </Run>
-                <Run Text="{Binding Leaderboard.Rows.Count}"/>
+                <Run Text="{Binding LeaderboardResult.Rows.Count}"/>
                 <Run Text=" of "/>
-                <Run Text="{Binding Leaderboard.TotalRowCount}"/>
+                <Run Text="{Binding LeaderboardResult.TotalRowCount}"/>
             </TextBlock>
-            <ItemsControl ItemsSource="{Binding Leaderboard.Rows}">
+            <Button x:Name="NextLbBtn" Content="Get Next" VerticalAlignment="Top" Click="NextLb_Click" Margin="4" IsEnabled="{Binding LeaderboardResult.HasNext}"/>
+            <ItemsControl ItemsSource="{Binding LeaderboardResult.Rows}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="leaderboard:LeaderboardRow">
                         <Grid>
-                            <TextBlock Margin="4">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                          </Grid.ColumnDefinitions>
+                            <TextBlock Margin="4" Grid.Column="0" Width="200">
                                 <Run FontWeight="Bold" FontSize="20" Text="{Binding Rank}"/>
                                 <Run FontWeight="Bold" FontSize="20" Text="."/>
                                 <Run Text="{Binding Gamertag}"/>
                             </TextBlock>
-                            <TextBlock TextAlignment="Right" HorizontalAlignment="Right">
-                                <Run Text="{Binding Values[0]}"/>
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" >
+                                <Run FontSize="20" Text="{Binding Values[0]}"/>
                             </TextBlock>
-                        </Grid>
+                      </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -54,9 +59,8 @@
         <StackPanel Grid.Row="2" Margin="4">
             <TextBlock Text="Stats" Margin="4" FontWeight="Bold"/>
             <StackPanel Orientation="Horizontal">
-                <Button Content="Write Stats" VerticalAlignment="Top" Click="WriteStats_Click" Margin="4"/>
-                <Button Content="Read Stats" VerticalAlignment="Top" Click="ReadStats_Click" Margin="4"/>
-                <Button Content="StatsManager DoWork" VerticalAlignment="Top" Click="StatsDoWork_Click" Margin="4"/>
+                <Button Content="Write Stats (global)" VerticalAlignment="Top" Click="WriteGlobalStats_Click" Margin="4"/>
+                <Button Content="Write Stats (social)" VerticalAlignment="Top" Click="WriteSocialStats_Click" Margin="4"/>
             </StackPanel>
             <TextBlock x:Name="StatsData" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Height="150" Margin="4"/>
         </StackPanel>
