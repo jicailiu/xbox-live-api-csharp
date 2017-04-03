@@ -11,14 +11,13 @@ namespace Microsoft.Xbox.Services.System
     internal interface IUserImpl
     {
         bool IsSignedIn { get; }
-        XboxLiveUser User { get; }
-
         string XboxUserId { get; }
         string Gamertag { get; }
         string AgeGroup { get; }
         string Privileges { get; }
         string WebAccountId { get; }
         AuthConfig AuthConfig { get; }
+        Windows.System.User CreationContext { get; }
 
         Task<SignInResult> SignInImpl(bool showUI, bool forceRefresh);
 

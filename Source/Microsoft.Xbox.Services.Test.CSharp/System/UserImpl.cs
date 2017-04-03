@@ -3,6 +3,7 @@
 
 namespace Microsoft.Xbox.Services.System
 {
+    using global::System;
     using global::System.Text;
     using global::System.Threading.Tasks;
 
@@ -29,6 +30,7 @@ namespace Microsoft.Xbox.Services.System
         public string Privileges { get; set; }
         public string WebAccountId { get; set; }
         public AuthConfig AuthConfig { get; set; }
+        public WeakReference<IXboxLiveUser> UserWeakref { get; set; }
 
         public Task<SignInResult> SignInImpl(bool showUI, bool forceRefresh)
         {

@@ -4,14 +4,18 @@
 namespace Microsoft.Xbox.Services
 {
     using global::System.Threading.Tasks;
-
     using Microsoft.Xbox.Services.System;
 
     public partial class XboxLiveUser
     {
         public XboxLiveUser()
         {
-            this.userImpl = new UserImpl(SignInCompleted, SignOutCompleted);
+            this.userImpl = new UserImpl(SignInCompleted, SignOutCompleted, null, this);
+        }
+
+        public XboxLiveUser(Windows.System.User systemUser)
+        {
+            this.userImpl = new UserImpl(SignInCompleted, SignOutCompleted, systemUser, this);
         }
 
         public Task RefreshToken()
