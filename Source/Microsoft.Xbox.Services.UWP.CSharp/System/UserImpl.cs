@@ -23,19 +23,18 @@ namespace Microsoft.Xbox.Services.System
 
         private WebAccountProvider provider;
         private readonly object userImplLock = new object();
-        private User creationContext;
         private static UserWatcher userWatcher;
         private static ConcurrentDictionary<string, UserImpl> trackingUsers = new ConcurrentDictionary<string, UserImpl>();
 
         public bool IsSignedIn { get; private set; }
-        public XboxLiveUser User { get; set; }
-
         public string XboxUserId { get; private set; }
         public string Gamertag { get; private set; }
         public string AgeGroup { get; private set; }
         public string Privileges { get; private set; }
         public string WebAccountId { get; private set; }
         public AuthConfig AuthConfig { get; private set; }
+        public User CreationContext { get; private set; }
+        internal WeakReference<IXboxLiveUser> UserWeakRef{ get; private set; }
 
         public static CoreDispatcher Dispatcher
         {
@@ -49,11 +48,12 @@ namespace Microsoft.Xbox.Services.System
         private readonly EventHandler<SignOutCompletedEventArgs> signOutCompleted;
         private ThreadPoolTimer threadPoolTimer;
 
-        public UserImpl(EventHandler<SignInCompletedEventArgs> signInCompleted, EventHandler<SignOutCompletedEventArgs> signOutCompleted, User systemUser)
+        public UserImpl(EventHandler<SignInCompletedEventArgs> signInCompleted, EventHandler<SignOutCompletedEventArgs> signOutCompleted, User systemUser, XboxLiveUser xboxLiveuser)
         {
             this.signInCompleted = signInCompleted;
             this.signOutCompleted = signOutCompleted;
-            this.creationContext = systemUser;
+            this.CreationContext = systemUser;
+            this.UserWeakRef = new WeakReference<IXboxLiveUser>(xboxLiveuser);
 
             var appConfig = XboxLiveAppConfiguration.Instance;
             this.AuthConfig = new AuthConfig
@@ -73,7 +73,7 @@ namespace Microsoft.Xbox.Services.System
                 if (userWatcher == null)
                 {
                     userWatcher = Windows.System.User.CreateWatcher();
-                    userWatcher.Removed += UserWatcher_Removed;
+                    userWatcher.Removed += UserWatcher_UserRemoved;
                 }
             }
 
@@ -107,7 +107,7 @@ namespace Microsoft.Xbox.Services.System
             return signInTask;
         }
 
-        private void UserWatcher_Removed(UserWatcher sender, UserChangedEventArgs args)
+        private void UserWatcher_UserRemoved(UserWatcher sender, UserChangedEventArgs args)
         {
             UserImpl signoutUser;
             if (UserImpl.trackingUsers.TryGetValue(args.User.NonRoamableId, out signoutUser))
@@ -126,7 +126,7 @@ namespace Microsoft.Xbox.Services.System
             TaskCompletionSource<object> taskCompletion = new TaskCompletionSource<object>();
 
             // First time initialization. 
-            if (this.creationContext == null && this.IsMultiUserApplication())
+            if (this.CreationContext == null && this.IsMultiUserApplication())
             {
                 taskCompletion.SetException(new Exception("Xbox Live User object is required to be constructed by a Windows.System.User object in the Multi-User environment."));
             }
@@ -150,13 +150,13 @@ namespace Microsoft.Xbox.Services.System
         {
             IAsyncOperation<WebAccountProvider> providerTask;
 
-            if (this.creationContext == null)
+            if (this.CreationContext == null)
             {
                 providerTask = WebAuthenticationCoreManager.FindAccountProviderAsync("https://xsts.auth.xboxlive.com");
             }
             else
             {
-                providerTask = WebAuthenticationCoreManager.FindAccountProviderAsync("https://xsts.auth.xboxlive.com", string.Empty, this.creationContext);
+                providerTask = WebAuthenticationCoreManager.FindAccountProviderAsync("https://xsts.auth.xboxlive.com", string.Empty, this.CreationContext);
             }
 
             providerTask.Completed = (webaccountProviderResult, state) => { this.FindAccountCompleted(webaccountProviderResult, state, completionSource); };
@@ -394,7 +394,7 @@ namespace Microsoft.Xbox.Services.System
                 this.IsSignedIn = true;
                 if (this.signInCompleted != null)
                 {
-                    this.signInCompleted(null, new SignInCompletedEventArgs(this.User));
+                    this.signInCompleted(null, new SignInCompletedEventArgs(xboxUserId));
                 }
             }
 
@@ -408,9 +408,9 @@ namespace Microsoft.Xbox.Services.System
             }
             else
             {
-                if (this.creationContext != null)
+                if (this.CreationContext != null)
                 {
-                    UserImpl.trackingUsers.TryAdd(this.creationContext.NonRoamableId, this);
+                    UserImpl.trackingUsers.TryAdd(this.CreationContext.NonRoamableId, this);
                 }
             }
         }
@@ -426,9 +426,9 @@ namespace Microsoft.Xbox.Services.System
 
             if (isSignedIn)
             {
-                if (this.signInCompleted != null)
+                if (this.signOutCompleted != null)
                 {
-                    this.signOutCompleted(this.User, new SignOutCompletedEventArgs(this.User));
+                    this.signOutCompleted(this, new SignOutCompletedEventArgs(this.UserWeakRef));
                 }
             }
 
@@ -444,10 +444,10 @@ namespace Microsoft.Xbox.Services.System
                     this.Privileges = null;
                     this.WebAccountId = null;
 
-                    if (this.creationContext != null)
+                    if (this.CreationContext != null)
                     {
                         UserImpl outResult;
-                        UserImpl.trackingUsers.TryRemove(this.creationContext.NonRoamableId, out outResult);
+                        UserImpl.trackingUsers.TryRemove(this.CreationContext.NonRoamableId, out outResult);
                     }
 
                     if (this.threadPoolTimer != null)

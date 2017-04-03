@@ -10,12 +10,12 @@ namespace Microsoft.Xbox.Services
     {
         public XboxLiveUser()
         {
-            this.userImpl = new UserImpl(SignInCompleted, SignOutCompleted, null);
+            this.userImpl = new UserImpl(SignInCompleted, SignOutCompleted, null, this);
         }
 
         public XboxLiveUser(Windows.System.User systemUser)
         {
-            this.userImpl = new UserImpl(SignInCompleted, SignOutCompleted, systemUser);
+            this.userImpl = new UserImpl(SignInCompleted, SignOutCompleted, systemUser, this);
         }
 
         public Task RefreshToken()

@@ -19,11 +19,11 @@ namespace Microsoft.Xbox.Services
 
         string XboxUserId { get; }
 
+        Windows.System.User SystemUser { get; }
+
         Task<SignInResult> SignInAsync();
 
         Task<SignInResult> SignInSilentlyAsync();
-
-        Task<SignInResult> SwitchAccountAsync();
 
         Task<TokenAndSignatureResult> GetTokenAndSignatureAsync(string httpMethod, string url, string headers);
 
