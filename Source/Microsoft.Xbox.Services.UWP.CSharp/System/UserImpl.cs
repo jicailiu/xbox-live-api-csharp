@@ -34,7 +34,7 @@ namespace Microsoft.Xbox.Services.System
         public string WebAccountId { get; private set; }
         public AuthConfig AuthConfig { get; private set; }
         public User CreationContext { get; private set; }
-        internal WeakReference<IXboxLiveUser> UserWeakRef{ get; private set; }
+        internal WeakReference<IXboxLiveUser> UserWeakReference { get; private set; }
 
         public static CoreDispatcher Dispatcher
         {
@@ -50,10 +50,25 @@ namespace Microsoft.Xbox.Services.System
 
         public UserImpl(EventHandler<SignInCompletedEventArgs> signInCompleted, EventHandler<SignOutCompletedEventArgs> signOutCompleted, User systemUser, XboxLiveUser xboxLiveuser)
         {
+            if (systemUser == null && IsMultiUserApplication())
+            {
+                throw(new XboxException("Xbox Live User object is required to be constructed by a Windows.System.User object in the Multi-User environment."));
+            }
+
+            //Initiate user watcher
+            if (IsMultiUserApplication())
+            {
+                if (userWatcher == null)
+                {
+                    userWatcher = Windows.System.User.CreateWatcher();
+                    userWatcher.Removed += UserWatcher_UserRemoved;
+                }
+            }
+
             this.signInCompleted = signInCompleted;
             this.signOutCompleted = signOutCompleted;
             this.CreationContext = systemUser;
-            this.UserWeakRef = new WeakReference<IXboxLiveUser>(xboxLiveuser);
+            this.UserWeakReference = new WeakReference<IXboxLiveUser>(xboxLiveuser);
 
             var appConfig = XboxLiveAppConfiguration.Instance;
             this.AuthConfig = new AuthConfig
@@ -67,16 +82,6 @@ namespace Microsoft.Xbox.Services.System
 
         public Task<SignInResult> SignInImpl(bool showUI, bool forceRefresh)
         {
-            //Initiate user watcher
-            if (this.IsMultiUserApplication())
-            {
-                if (userWatcher == null)
-                {
-                    userWatcher = Windows.System.User.CreateWatcher();
-                    userWatcher.Removed += UserWatcher_UserRemoved;
-                }
-            }
-
             var signInTask = this.InitializeProvider().ContinueWith((task) =>
             {
                 var tokenAndSigResult = this.InternalGetTokenAndSignatureHelper(
@@ -107,7 +112,7 @@ namespace Microsoft.Xbox.Services.System
             return signInTask;
         }
 
-        private void UserWatcher_UserRemoved(UserWatcher sender, UserChangedEventArgs args)
+        static private void UserWatcher_UserRemoved(UserWatcher sender, UserChangedEventArgs args)
         {
             UserImpl signoutUser;
             if (UserImpl.trackingUsers.TryGetValue(args.User.NonRoamableId, out signoutUser))
@@ -124,13 +129,6 @@ namespace Microsoft.Xbox.Services.System
             }
 
             TaskCompletionSource<object> taskCompletion = new TaskCompletionSource<object>();
-
-            // First time initialization. 
-            if (this.CreationContext == null && this.IsMultiUserApplication())
-            {
-                taskCompletion.SetException(new Exception("Xbox Live User object is required to be constructed by a Windows.System.User object in the Multi-User environment."));
-            }
-
 
             if (!Dispatcher.HasThreadAccess)
             {
@@ -173,21 +171,21 @@ namespace Microsoft.Xbox.Services.System
             completionSource.SetResult(null);
         }
 
-        private bool IsMultiUserApplication()
+        static private bool IsMultiUserApplication()
         {
-            if (UserImpl.isMultiUserSupported == null)
+            if (isMultiUserSupported == null)
             {
                 try
                 {
-                    bool APIExist = Windows.Foundation.Metadata.ApiInformation.IsMethodPresent("Windows.System.UserPicker", "IsSupported");
-                    UserImpl.isMultiUserSupported = (APIExist && UserPicker.IsSupported()) ? true : false;
+                    bool apiExist = Windows.Foundation.Metadata.ApiInformation.IsMethodPresent("Windows.System.UserPicker", "IsSupported");
+                    isMultiUserSupported = (apiExist && UserPicker.IsSupported());
                 }
                 catch (Exception)
                 {
-                    UserImpl.isMultiUserSupported = false;
+                    isMultiUserSupported = false;
                 }
             }
-            return UserImpl.isMultiUserSupported == true;
+            return isMultiUserSupported == true;
         }
 
         public Task<TokenAndSignatureResult> InternalGetTokenAndSignatureAsync(string httpMethod, string url, string headers, byte[] body, bool promptForCredentialsIfNeeded, bool forceRefresh)
@@ -394,12 +392,12 @@ namespace Microsoft.Xbox.Services.System
                 this.IsSignedIn = true;
                 if (this.signInCompleted != null)
                 {
-                    this.signInCompleted(null, new SignInCompletedEventArgs(xboxUserId));
+                    this.signInCompleted(null, new SignInCompletedEventArgs(this.UserWeakReference));
                 }
             }
 
             // We use user watcher for MUA, if it's SUA we use own checker for sign out event.
-            if (!this.IsMultiUserApplication())
+            if (!IsMultiUserApplication())
             {
                 TimeSpan delay = new TimeSpan(0, 0, 10);
                 this.threadPoolTimer = ThreadPoolTimer.CreatePeriodicTimer(new TimerElapsedHandler((source) => { this.CheckUserSignedOut(); }),
@@ -408,10 +406,7 @@ namespace Microsoft.Xbox.Services.System
             }
             else
             {
-                if (this.CreationContext != null)
-                {
-                    UserImpl.trackingUsers.TryAdd(this.CreationContext.NonRoamableId, this);
-                }
+                UserImpl.trackingUsers.TryAdd(this.CreationContext.NonRoamableId, this);
             }
         }
 
@@ -428,7 +423,7 @@ namespace Microsoft.Xbox.Services.System
             {
                 if (this.signOutCompleted != null)
                 {
-                    this.signOutCompleted(this, new SignOutCompletedEventArgs(this.UserWeakRef));
+                    this.signOutCompleted(this, new SignOutCompletedEventArgs(this.UserWeakReference));
                 }
             }
 

@@ -33,6 +33,7 @@ namespace UWPIntegration
 
             Log("This is a " + (isMultiUserApplication ? "MUA" : "SUA"));
 
+            XboxLiveUser.SignInCompleted += XboxLiveUser_SignInCompleted; ;
             XboxLiveUser.SignOutCompleted += XboxLiveUser_SignOutCompleted;
 
             Start();
@@ -83,26 +84,28 @@ namespace UWPIntegration
                 }
                 catch (Exception e)
                 {
-                    Log($"SignInAsync failed, id:{id}, Exception: " + e.ToString());
+                    Log($"sign in failed, id:{id}, Exception: " + e.ToString());
                 }
             });
         }
 
         private async void XboxLiveUser_SignOutCompleted(object sender, SignOutCompletedEventArgs args)
         {
-            string userid = "";
-            IXboxLiveUser user = null;
-            if (args.User.TryGetTarget(out user))
-            {
-                userid = user.SystemUser.NonRoamableId;
-            }
-
             var UIDispatcher = Windows.ApplicationModel.Core.CoreApplication.MainView.Dispatcher;
             await UIDispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
             {
-                Log($"User signed out, id:{userid}");
+                Log($"User signed out, id:{args.User.SystemUser.NonRoamableId}");
             });
             
+        }
+
+        private async void  XboxLiveUser_SignInCompleted(object sender, SignInCompletedEventArgs args)
+        {
+            var UIDispatcher = Windows.ApplicationModel.Core.CoreApplication.MainView.Dispatcher;
+            await UIDispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                Log($"User signed in callback, id:{args.User.SystemUser.NonRoamableId}");
+            });
         }
     }
 }

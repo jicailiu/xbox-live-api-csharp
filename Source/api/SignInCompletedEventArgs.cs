@@ -7,11 +7,15 @@ namespace Microsoft.Xbox.Services
 
     public class SignInCompletedEventArgs : EventArgs
     {
-        public SignInCompletedEventArgs(string xboxLiveUserId)
+        public SignInCompletedEventArgs(WeakReference<IXboxLiveUser> user)
         {
-            this.XboxLiveUserId = xboxLiveUserId;
+            IXboxLiveUser xblUser = null;
+            if (user.TryGetTarget(out xblUser))
+            {
+                this.User = xblUser;
+            }
         }
 
-        public string XboxLiveUserId { get; private set; }
+        public IXboxLiveUser User { get; private set; }
     }
 }
