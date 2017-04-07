@@ -17,8 +17,9 @@ namespace Microsoft.Xbox.Services.System
         string Privileges { get; }
         string WebAccountId { get; }
         AuthConfig AuthConfig { get; }
+#if WINDOWS_UWP
         Windows.System.User CreationContext { get; }
-
+#endif
         Task<SignInResult> SignInImpl(bool showUI, bool forceRefresh);
 
         Task<TokenAndSignatureResult> InternalGetTokenAndSignatureAsync(string httpMethod, string url, string headers, byte[] body, bool promptForCredentialsIfNeeded, bool forceRefresh);

@@ -28,5 +28,14 @@ namespace Microsoft.Xbox.Services
                 }
             });
         }
+
+        public Windows.System.User SystemUser
+        {
+            get
+            {
+                return this.userImpl.CreationContext;
+            }
+        }
+
     }
 }

@@ -11,5 +11,13 @@ namespace Microsoft.Xbox.Services
         {
             this.userImpl = new UserImpl();
         }
+
+        public object SystemUser
+        {
+            get
+            {
+                return null;
+            }
+        }
     }
 }

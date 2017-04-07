@@ -34,7 +34,7 @@ namespace Microsoft.Xbox.Services.System
         public string WebAccountId { get; private set; }
         public AuthConfig AuthConfig { get; private set; }
         public User CreationContext { get; private set; }
-        internal WeakReference<IXboxLiveUser> UserWeakReference { get; private set; }
+        internal WeakReference UserWeakReference { get; private set; }
 
         public static CoreDispatcher Dispatcher
         {
@@ -68,7 +68,7 @@ namespace Microsoft.Xbox.Services.System
             this.signInCompleted = signInCompleted;
             this.signOutCompleted = signOutCompleted;
             this.CreationContext = systemUser;
-            this.UserWeakReference = new WeakReference<IXboxLiveUser>(xboxLiveuser);
+            this.UserWeakReference = new WeakReference(xboxLiveuser);
 
             var appConfig = XboxLiveAppConfiguration.Instance;
             this.AuthConfig = new AuthConfig

@@ -19,7 +19,9 @@ namespace Microsoft.Xbox.Services
 
         string XboxUserId { get; }
 
+#if WINDOWS_UWP
         Windows.System.User SystemUser { get; }
+#endif
 
         Task<SignInResult> SignInAsync();
 

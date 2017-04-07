@@ -64,14 +64,6 @@ namespace Microsoft.Xbox.Services
             }
         }
 
-        public Windows.System.User SystemUser
-        {
-            get
-            {
-                return this.userImpl.CreationContext;
-            }
-        }
-
         public Task<SignInResult> SignInAsync()
         {
             return this.userImpl.SignInImpl(true, false);
@@ -97,13 +89,13 @@ namespace Microsoft.Xbox.Services
             return this.userImpl.InternalGetTokenAndSignatureAsync(httpMethod, url, headers, body, false, false);
         }
 
-        private static void OnSignInCompleted(WeakReference<IXboxLiveUser> user)
+        private static void OnSignInCompleted(WeakReference user)
         {
             var handler = SignInCompleted;
             if (handler != null) handler(null, new SignInCompletedEventArgs(user));
         }
 
-        private static void OnSignOutCompleted(WeakReference<IXboxLiveUser> user)
+        private static void OnSignOutCompleted(WeakReference user)
         {
             var handler = SignOutCompleted;
             if (handler != null) handler(null, new SignOutCompletedEventArgs(user));
