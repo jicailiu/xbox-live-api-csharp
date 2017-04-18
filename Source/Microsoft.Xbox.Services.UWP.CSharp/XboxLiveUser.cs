@@ -29,7 +29,7 @@ namespace Microsoft.Xbox.Services
             });
         }
 
-        public Windows.System.User SystemUser
+        public Windows.System.User WindowsSystemUser
         {
             get
             {

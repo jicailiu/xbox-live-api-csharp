@@ -64,7 +64,8 @@ namespace Microsoft.Xbox.Services
             }
         }
 
-        public Task<SignInResult> SignInAsync()        {
+        public Task<SignInResult> SignInAsync()
+        {
             return this.userImpl.SignInImpl(true, false);
         }
 
