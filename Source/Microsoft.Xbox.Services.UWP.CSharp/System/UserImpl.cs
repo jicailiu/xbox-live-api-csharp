@@ -195,13 +195,17 @@ namespace Microsoft.Xbox.Services.System
                 var result = this.InternalGetTokenAndSignatureHelper(httpMethod, url, headers, body, promptForCredentialsIfNeeded, forceRefresh);
                 if (result.TokenRequestResult != null && result.TokenRequestResult.ResponseStatus == WebTokenRequestStatus.UserInteractionRequired)
                 {
+                    // Failed to get 'xboxlive.com' token, sign out if already sign in (SPOP or user banned).
+                    // But for sign in path, it's expected.
                     if (this.AuthConfig.XboxLiveEndpoint != null && url == this.AuthConfig.XboxLiveEndpoint && this.IsSignedIn)
                     {
                         this.UserSignedOut();
                     }
                     else if (url != this.AuthConfig.XboxLiveEndpoint)
                     {
-                        // todo: throw error
+                        // If it's not asking for xboxlive.com's token, we treat UserInteractionRequired as an error
+                        string errorMsg = "Failed to get token for endpoint: " + url;
+                        throw new XboxException(errorMsg);
                     }
                 }
 
@@ -213,7 +217,7 @@ namespace Microsoft.Xbox.Services.System
         {
             if (this.provider == null)
             {
-                throw new Exception("Xbox Live identity provider is not initialized");
+                throw new XboxException("Xbox Live identity provider is not initialized");
             }
 
             var request = new WebTokenRequest(this.provider);
@@ -243,18 +247,11 @@ namespace Microsoft.Xbox.Services.System
 
             TokenAndSignatureResult tokenAndSignatureReturnResult = null;
             var tokenResult = this.RequestTokenFromIDP(Dispatcher, promptForCredentialsIfNeeded, request);
-            try
+            tokenAndSignatureReturnResult = this.ConvertWebTokenRequestResult(tokenResult);
+            if (tokenAndSignatureReturnResult != null && this.IsSignedIn && tokenAndSignatureReturnResult.XboxUserId != this.XboxUserId)
             {
-                tokenAndSignatureReturnResult = this.ConvertWebTokenRequestResult(tokenResult);
-                if (tokenAndSignatureReturnResult != null && this.IsSignedIn && tokenAndSignatureReturnResult.XboxUserId != this.XboxUserId)
-                {
-                    this.UserSignedOut();
-                    throw new Exception("User has switched"); // todo: auth_user_switched
-                }
-            }
-            catch (Exception)
-            {
-                // log
+                this.UserSignedOut();
+                throw new XboxException("User has switched"); // todo: auth_user_switched
             }
 
             return tokenAndSignatureReturnResult;
@@ -304,6 +301,11 @@ namespace Microsoft.Xbox.Services.System
 
                 getTokenTask.Completed += (tokenTask, status) => webTokenRequestSource.SetResult(tokenTask.GetResults());
 
+                webTokenRequestSource.Task.Wait();
+                if (webTokenRequestSource.Task.Exception != null)
+                {
+                    throw webTokenRequestSource.Task.Exception;
+                }
                 tokenResult = webTokenRequestSource.Task.Result;
             }
 
@@ -366,17 +368,22 @@ namespace Microsoft.Xbox.Services.System
             }
             else if (tokenResponseStatus == WebTokenRequestStatus.AccountSwitch)
             {
-                this.UserSignedOut(); // todo: throw?
+                this.UserSignedOut();
+                throw new XboxException("User has switched");
             }
             else if (tokenResponseStatus == WebTokenRequestStatus.ProviderError)
             {
-                // todo: log error
+                string errorMsg = "Provider error: " + tokenResult.ResponseError.ErrorMessage  + ", Error Code: " + tokenResult.ResponseError.ErrorCode.ToString("X");
+                throw new XboxException(errorMsg);
+            }
+            else
+            {
+                return new TokenAndSignatureResult()
+                {
+                    TokenRequestResult = tokenResult
+                };
             }
 
-            return new TokenAndSignatureResult()
-            {
-                TokenRequestResult = tokenResult
-            };
         }
 
         private void UserSignedIn(string xboxUserId, string gamertag, string ageGroup, string privileges, string webAccountId)
