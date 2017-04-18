@@ -79,7 +79,7 @@ namespace Microsoft.Xbox.Services.System
 
         public async Task<SignInResult> SignInImpl(bool showUI, bool forceRefresh)
         {
-            this.Provider.InitializeProvider(this.CreationContext);
+            await this.Provider.InitializeProvider(this.CreationContext);
 
             TokenAndSignatureResult result = await this.InternalGetTokenAndSignatureHelperAsync("GET", this.AuthConfig.XboxLiveEndpoint, "", null, showUI, false);
             SignInStatus status = ConvertWebTokenRequestStatus(result.TokenRequestResultStatus);
@@ -277,7 +277,7 @@ namespace Microsoft.Xbox.Services.System
             else if (tokenResponseStatus == WebTokenRequestStatus.ProviderError)
             {
                 string errorMsg = "Provider error: " + tokenResult.ResponseError.ErrorMessage  + ", Error Code: " + tokenResult.ResponseError.ErrorCode.ToString("X");
-                throw new XboxException(errorMsg);
+                throw new XboxException((int)tokenResult.ResponseError.ErrorCode, errorMsg);
             }
             else
             {
