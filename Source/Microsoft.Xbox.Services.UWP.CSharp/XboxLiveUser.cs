@@ -36,7 +36,7 @@ namespace Microsoft.Xbox.Services
             return this.userImpl.InternalGetTokenAndSignatureAsync("GET", this.userImpl.AuthConfig.XboxLiveEndpoint, null, null, false, true);
         }
 
-        public Windows.System.User SystemUser
+        public Windows.System.User WindowsSystemUser
         {
             get
             {
