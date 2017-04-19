@@ -12,7 +12,7 @@ namespace Microsoft.Xbox.Services
             this.userImpl = new UserImpl();
         }
 
-        public object SystemUser
+        public object WindowsSystemUser
         {
             get
             {

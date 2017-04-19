@@ -28,7 +28,7 @@ namespace Microsoft.Xbox.Services
 
         internal string Reserved { get; set; }
 #if WINDOWS_UWP
-        internal WebTokenRequestResult TokenRequestResult { get; set; }
+        internal WebTokenRequestStatus TokenRequestResultStatus { get; set; }
 #endif
     }
 }

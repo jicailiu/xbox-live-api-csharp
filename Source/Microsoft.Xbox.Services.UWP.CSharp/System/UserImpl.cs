@@ -5,17 +5,15 @@ namespace Microsoft.Xbox.Services.System
 {
     using Windows.Foundation;
     using Windows.Security.Authentication.Web.Core;
-    using Windows.Security.Credentials;
     using Windows.System;
     using Windows.System.Threading;
     using Windows.UI.Core;
 
     using global::System;
-    using global::System.Collections.Concurrent;
-   
     using global::System.Linq;
     using global::System.Text;
     using global::System.Threading.Tasks;
+    using global::System.Collections.Concurrent;
 
     internal class UserImpl : IUserImpl
     {
@@ -28,7 +26,7 @@ namespace Microsoft.Xbox.Services.System
         private static readonly ConcurrentDictionary<string, UserImpl> trackingUsers = new ConcurrentDictionary<string, UserImpl>();
 
         private readonly object userImplLock = new object();
-        private WebAccountProvider provider;
+        internal AccountProvider Provider { get; set; } = new AccountProvider();
 
         public bool IsSignedIn { get; private set; }
         public string XboxUserId { get; private set; }
@@ -81,10 +79,10 @@ namespace Microsoft.Xbox.Services.System
 
         public async Task<SignInResult> SignInImpl(bool showUI, bool forceRefresh)
         {
-            await this.InitializeProviderAsync();
+            await this.Provider.InitializeProvider(this.CreationContext);
 
             TokenAndSignatureResult result = await this.InternalGetTokenAndSignatureHelperAsync("GET", this.AuthConfig.XboxLiveEndpoint, "", null, showUI, false);
-            SignInStatus status = ConvertWebTokenRequestStatus(result.TokenRequestResult.ResponseStatus);
+            SignInStatus status = ConvertWebTokenRequestStatus(result.TokenRequestResultStatus);
 
             if (status != SignInStatus.Success)
             {
@@ -110,51 +108,6 @@ namespace Microsoft.Xbox.Services.System
             }
         }
 
-        private async Task InitializeProviderAsync()
-        {
-            if (this.provider != null)
-            {
-                return;
-            }
-
-            if (!Dispatcher.HasThreadAccess)
-            {
-                // There's no way to wait for a dispatcher call to finish if it's async, so we need to use a TaskCompletionSource.
-                TaskCompletionSource<WebAccountProvider> findProviderCompletionSource = new TaskCompletionSource<WebAccountProvider>();
-
-                // We're not on the UI thread, so we'll use the dispatcher to make our call.
-                await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, async () => { findProviderCompletionSource.SetResult(await this.FindProvider()); });
-
-                this.provider = await findProviderCompletionSource.Task;
-            }
-            else
-            {
-                // Otherwise just go ahead and make the call on this thread.
-                this.provider = await this.FindProvider();
-            }
-        }
-
-        private async Task<WebAccountProvider> FindProvider()
-        {
-            WebAccountProvider accountProvider;
-
-            if (this.CreationContext == null)
-            {
-                accountProvider = await WebAuthenticationCoreManager.FindAccountProviderAsync("https://xsts.auth.xboxlive.com");
-            }
-            else
-            {
-                accountProvider = await WebAuthenticationCoreManager.FindAccountProviderAsync("https://xsts.auth.xboxlive.com", string.Empty, this.CreationContext);
-            }
-
-            if (accountProvider == null)
-            {
-                throw new XboxException("Unable to find Xbox Live Identity Provider");
-            }
-
-            return accountProvider;
-        }
-
         private static bool IsMultiUserApplication
         {
             get
@@ -178,18 +131,22 @@ namespace Microsoft.Xbox.Services.System
         public async Task<TokenAndSignatureResult> InternalGetTokenAndSignatureAsync(string httpMethod, string url, string headers, byte[] body, bool promptForCredentialsIfNeeded, bool forceRefresh)
         {
             var result = await this.InternalGetTokenAndSignatureHelperAsync(httpMethod, url, headers, body, promptForCredentialsIfNeeded, forceRefresh);
-            if (result.TokenRequestResult == null || result.TokenRequestResult.ResponseStatus != WebTokenRequestStatus.UserInteractionRequired)
+            if (result.TokenRequestResultStatus == WebTokenRequestStatus.UserInteractionRequired)
             {
                 return result;
             }
 
+            // Failed to get 'xboxlive.com' token, sign out if already sign in (SPOP or user banned).
+            // But for sign in path, it's expected.
             if (this.AuthConfig.XboxLiveEndpoint != null && url == this.AuthConfig.XboxLiveEndpoint && this.IsSignedIn)
             {
                 this.UserSignedOut();
             }
             else if (url != this.AuthConfig.XboxLiveEndpoint)
             {
-                // todo: throw error
+                // If it's not asking for xboxlive.com's token, we treat UserInteractionRequired as an error
+                string errorMsg = "Failed to get token for endpoint: " + url;
+                throw new XboxException(errorMsg);
             }
 
             return result;
@@ -197,12 +154,7 @@ namespace Microsoft.Xbox.Services.System
 
         private async Task<TokenAndSignatureResult> InternalGetTokenAndSignatureHelperAsync(string httpMethod, string url, string headers, byte[] body, bool promptForCredentialsIfNeeded, bool forceRefresh)
         {
-            if (this.provider == null)
-            {
-                throw new Exception("Xbox Live identity provider is not initialized");
-            }
-
-            var request = new WebTokenRequest(this.provider);
+            var request = this.Provider.CreateWebTokenRequest();
             request.Properties.Add("HttpMethod", httpMethod);
             request.Properties.Add("Url", url);
             if (!string.IsNullOrEmpty(headers))
@@ -229,79 +181,71 @@ namespace Microsoft.Xbox.Services.System
 
             TokenAndSignatureResult tokenAndSignatureReturnResult = null;
             var tokenResult = await RequestTokenFromIdpAsync(promptForCredentialsIfNeeded, request);
-            try
+            tokenAndSignatureReturnResult = this.ConvertWebTokenRequestResult(tokenResult);
+            if (tokenAndSignatureReturnResult != null && this.IsSignedIn && tokenAndSignatureReturnResult.XboxUserId != this.XboxUserId)
             {
-                tokenAndSignatureReturnResult = this.ConvertWebTokenRequestResult(tokenResult);
-                if (tokenAndSignatureReturnResult != null && this.IsSignedIn && tokenAndSignatureReturnResult.XboxUserId != this.XboxUserId)
-                {
-                    this.UserSignedOut();
-                    throw new Exception("User has switched"); // todo: auth_user_switched
-                }
-            }
-            catch (Exception)
-            {
-                // log
+                this.UserSignedOut();
+                throw new XboxException("User has switched");
             }
 
             return tokenAndSignatureReturnResult;
         }
 
-        private static Task<WebTokenRequestResult> RequestTokenFromIdpAsync(bool promptForCredentialsIfNeeded, WebTokenRequest request)
+        private Task<TokenRequestResult> RequestTokenFromIdpAsync(bool promptForCredentialsIfNeeded, WebTokenRequest request)
         {
             if (!promptForCredentialsIfNeeded)
             {
-                return WebAuthenticationCoreManager.GetTokenSilentlyAsync(request).AsTask();
+                return this.Provider.GetTokenSilentlyAsync(request);
             }
 
-            TaskCompletionSource<WebTokenRequestResult> webTokenRequestSource = new TaskCompletionSource<WebTokenRequestResult>();
+            TaskCompletionSource<TokenRequestResult> tokenRequestSource = new TaskCompletionSource<TokenRequestResult>();
             IAsyncAction requestTokenTask = Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
                 async () =>
                 {
                     try
                     {
-                        WebTokenRequestResult result = await WebAuthenticationCoreManager.RequestTokenAsync(request);
-                        webTokenRequestSource.SetResult(result);
+                        var result = await this.Provider.RequestTokenAsync(request);
+                        tokenRequestSource.SetResult(result);
                     }
                     catch (Exception e)
                     {
-                        webTokenRequestSource.SetException(e);
+                        tokenRequestSource.SetException(e);
                     }
                 });
 
-            return webTokenRequestSource.Task;
+                tokenRequestSource.Task.Wait();
+                if (tokenRequestSource.Task.Exception != null)
+                {
+                    throw tokenRequestSource.Task.Exception;
+                }
+            return tokenRequestSource.Task;
         }
 
-        private TokenAndSignatureResult ConvertWebTokenRequestResult(WebTokenRequestResult tokenResult)
+        private TokenAndSignatureResult ConvertWebTokenRequestResult(TokenRequestResult tokenResult)
         {
             var tokenResponseStatus = tokenResult.ResponseStatus;
 
             if (tokenResponseStatus == WebTokenRequestStatus.Success)
             {
-                if (tokenResult.ResponseData == null || tokenResult.ResponseData.Count == 0)
-                {
-                    throw new Exception("Invalid idp token response");
-                }
 
-                WebTokenResponse response = tokenResult.ResponseData.ElementAt(0);
-
-                string xboxUserId = response.Properties["XboxUserId"];
-                string gamertag = response.Properties["Gamertag"];
-                string ageGroup = response.Properties["AgeGroup"];
-                string environment = response.Properties["Environment"];
-                string sandbox = response.Properties["Sandbox"];
-                string webAccountId = response.WebAccount.Id;
-                string token = response.Token;
+                string xboxUserId = tokenResult.Properties["XboxUserId"];
+                string gamertag = tokenResult.Properties["Gamertag"];
+                string ageGroup = tokenResult.Properties["AgeGroup"];
+                string environment = tokenResult.Properties["Environment"];
+                string sandbox = tokenResult.Properties["Sandbox"];
+                string webAccountId = tokenResult.WebAccountId;
+                string token = tokenResult.Token;
 
                 string signature = null;
-                if (response.Properties.ContainsKey("Signature"))
+                if (tokenResult.Properties.ContainsKey("Signature"))
                 {
-                    signature = response.Properties["Signature"];
+                    signature = tokenResult.Properties["Signature"];
                 }
 
                 string privilege = null;
-                if (response.Properties.ContainsKey("Privileges"))
+                if (tokenResult.Properties.ContainsKey("Privileges"))
                 {
-                    privilege = response.Properties["Privileges"];
+                    privilege = tokenResult.Properties["Privileges"];
                 }
 
                 if (environment.ToLower() == "prod")
@@ -322,22 +266,27 @@ namespace Microsoft.Xbox.Services.System
                     XboxUserId = xboxUserId,
                     Signature = signature,
                     Token = token,
-                    TokenRequestResult = tokenResult
+                    TokenRequestResultStatus = tokenResult.ResponseStatus
                 };
             }
             else if (tokenResponseStatus == WebTokenRequestStatus.AccountSwitch)
             {
-                this.UserSignedOut(); // todo: throw?
+                this.UserSignedOut();
+                throw new XboxException("User has switched");
             }
             else if (tokenResponseStatus == WebTokenRequestStatus.ProviderError)
             {
-                // todo: log error
+                string errorMsg = "Provider error: " + tokenResult.ResponseError.ErrorMessage  + ", Error Code: " + tokenResult.ResponseError.ErrorCode.ToString("X");
+                throw new XboxException((int)tokenResult.ResponseError.ErrorCode, errorMsg);
+            }
+            else
+            {
+                return new TokenAndSignatureResult()
+                {
+                    TokenRequestResultStatus = tokenResult.ResponseStatus
+                };
             }
 
-            return new TokenAndSignatureResult()
-            {
-                TokenRequestResult = tokenResult
-            };
         }
 
         private void UserSignedIn(string xboxUserId, string gamertag, string ageGroup, string privileges, string webAccountId)
@@ -415,7 +364,7 @@ namespace Microsoft.Xbox.Services.System
 
             try
             {
-                var signedInAccount = WebAuthenticationCoreManager.FindAccountAsync(this.provider, this.WebAccountId);
+                var signedInAccount = this.Provider.FindAccountAsync(this.WebAccountId);
                 if (signedInAccount == null)
                 {
                     this.UserSignedOut();
@@ -440,9 +389,9 @@ namespace Microsoft.Xbox.Services.System
                 case WebTokenRequestStatus.AccountSwitch:
                 case WebTokenRequestStatus.AccountProviderNotAvailable:
                 case WebTokenRequestStatus.ProviderError:
-                    return SignInStatus.ProviderError;
+                    throw new XboxException("Unexpected WebTokenRequestStatus");
                 default:
-                    throw new ArgumentOutOfRangeException("status");
+                    throw new ArgumentOutOfRangeException("WebTokenRequestStatus");
             }
         }
 

@@ -15,6 +15,11 @@ namespace Microsoft.Xbox.Services
         {
         }
 
+        public XboxException(int HResult, string message) : base(message)
+        {
+            this.HResult = HResult;
+        }
+
         public XboxException(string message, Exception innerException) : base(message, innerException)
         {
         }

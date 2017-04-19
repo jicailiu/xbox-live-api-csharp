@@ -36,7 +36,7 @@ namespace Microsoft.Xbox.Services
             return this.userImpl.InternalGetTokenAndSignatureAsync("GET", this.userImpl.AuthConfig.XboxLiveEndpoint, null, null, false, true);
         }
 
-        public Windows.System.User SystemUser
+        public Windows.System.User WindowsSystemUser
         {
             get
             {
@@ -44,5 +44,24 @@ namespace Microsoft.Xbox.Services
             }
         }
 
+        internal UserImpl GetImpl()
+        {
+            return this.userImpl as UserImpl;
+        }
+
+        internal static void CleanupEventHandler()
+        {
+            foreach (var eh in signInDelegates)
+            {
+                InternalSignInCompleted -= eh;
+            }
+            signInDelegates.Clear();
+
+            foreach (var eh in signOutDelegates)
+            {
+                InternalSignOutCompleted -= eh;
+            }
+            signOutDelegates.Clear();
+        }
     }
 }
