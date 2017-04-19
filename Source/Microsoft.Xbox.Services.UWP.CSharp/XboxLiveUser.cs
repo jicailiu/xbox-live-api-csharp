@@ -49,5 +49,19 @@ namespace Microsoft.Xbox.Services
             return this.userImpl as UserImpl;
         }
 
+        internal static void CleanupEventHandler()
+        {
+            foreach (var eh in signInDelegates)
+            {
+                InternalSignInCompleted -= eh;
+            }
+            signInDelegates.Clear();
+
+            foreach (var eh in signOutDelegates)
+            {
+                InternalSignOutCompleted -= eh;
+            }
+            signOutDelegates.Clear();
+        }
     }
 }

@@ -8,6 +8,5 @@ namespace Microsoft.Xbox.Services
         Success = 0,
         UserInteractionRequired = 1,
         UserCancel = 2,
-        ProviderError = 2,
     }
 }

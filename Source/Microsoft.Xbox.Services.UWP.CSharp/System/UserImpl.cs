@@ -138,7 +138,7 @@ namespace Microsoft.Xbox.Services.System
 
             // Failed to get 'xboxlive.com' token, sign out if already sign in (SPOP or user banned).
             // But for sign in path, it's expected.
-			if (this.AuthConfig.XboxLiveEndpoint != null && url == this.AuthConfig.XboxLiveEndpoint && this.IsSignedIn)
+            if (this.AuthConfig.XboxLiveEndpoint != null && url == this.AuthConfig.XboxLiveEndpoint && this.IsSignedIn)
             {
                 this.UserSignedOut();
             }
@@ -389,9 +389,9 @@ namespace Microsoft.Xbox.Services.System
                 case WebTokenRequestStatus.AccountSwitch:
                 case WebTokenRequestStatus.AccountProviderNotAvailable:
                 case WebTokenRequestStatus.ProviderError:
-                    return SignInStatus.ProviderError;
+                    throw new XboxException("Unexpected WebTokenRequestStatus");
                 default:
-                    throw new ArgumentOutOfRangeException("status");
+                    throw new ArgumentOutOfRangeException("WebTokenRequestStatus");
             }
         }
 

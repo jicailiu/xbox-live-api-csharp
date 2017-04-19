@@ -13,6 +13,7 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
     using UITestMethod = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.AppContainer.UITestMethodAttribute;
     using Windows.Security.Authentication.Web.Core;
     using global::System.Collections.Generic;
+    using global::System.Threading;
 
     [TestClass]
     public class UserTest
@@ -73,6 +74,12 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             return provider;
         }
 
+        [TestCleanup]
+        public void Cleanup()
+        {
+            XboxLiveUser.CleanupEventHandler();
+        }
+
         [TestCategory("XboxLiveUser")]
         [TestMethod]
         public async Task CreateUser()
@@ -97,6 +104,13 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
         {
             var user = new XboxLiveUser();
             Assert.IsFalse(user.IsSignedIn);
+
+            AutoResetEvent signinEvent = new AutoResetEvent(false);
+            XboxLiveUser.SignInCompleted += ((Object o, SignInCompletedEventArgs args) =>
+            {
+                Assert.AreEqual(args.User, user);
+                signinEvent.Set();
+            });
             var response = CreateSuccessTokenResponse();
             user.GetImpl().Provider = CreateMockAccountProvider(response, null).Object;
 
@@ -110,6 +124,9 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             Assert.AreEqual(user.AgeGroup, mockAgeGroup);
             Assert.AreEqual(user.Privileges, mockPrivileges);
             Assert.AreEqual(user.WebAccountId, mockWebAccountId);
+
+            Assert.IsTrue(signinEvent.WaitOne(10000), "wait signin event time out");
+
         }
 
         [TestCategory("XboxLiveUser")]
@@ -118,6 +135,13 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
         {
             var user = new XboxLiveUser();
             Assert.IsFalse(user.IsSignedIn);
+
+            AutoResetEvent signinEvent = new AutoResetEvent(false);
+            XboxLiveUser.SignInCompleted += ((Object o, SignInCompletedEventArgs args) =>
+            {
+                Assert.AreEqual(args.User, user);
+                signinEvent.Set();
+            });
 
             var response = CreateSuccessTokenResponse();
             user.GetImpl().Provider = CreateMockAccountProvider(null, response).Object;
@@ -130,6 +154,8 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             Assert.AreEqual(user.AgeGroup, mockAgeGroup);
             Assert.AreEqual(user.Privileges, mockPrivileges);
             Assert.AreEqual(user.WebAccountId, mockWebAccountId);
+
+            Assert.IsTrue(signinEvent.WaitOne(10000), "wait signin event time out");
         }
 
         [TestCategory("XboxLiveUser")]
@@ -180,20 +206,12 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             {
                 Assert.AreEqual(ex.HResult, mockErrorcode);
                 Assert.IsFalse(string.IsNullOrEmpty(ex.Message));
-            }
-            Assert.IsFalse(user.IsSignedIn);
+                Assert.IsFalse(user.IsSignedIn);
 
-            // ProviderError will convert to exception
-            try
-            {
-                var signinResult = await user.SignInAsync();
+                return;
             }
-            catch(XboxException ex)
-            {
-                Assert.AreEqual(ex.HResult, mockErrorcode);
-                Assert.IsFalse(string.IsNullOrEmpty(ex.Message));
-            }
-            Assert.IsFalse(user.IsSignedIn);
+
+            Assert.Fail("No exception was thrown.");
         }
 
         [TestCategory("XboxLiveUser")]
@@ -202,9 +220,46 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
         // provider error 
         {
             var user = new XboxLiveUser();
-            //user.GetImpl().Provider = CreateMockAccountProvider(result, result).Object;
+            Assert.IsFalse(user.IsSignedIn);
 
+            AutoResetEvent signoutEvent = new AutoResetEvent(false);
+            XboxLiveUser.SignOutCompleted += ((Object o, SignOutCompletedEventArgs args) =>
+            {
+                Assert.AreEqual(args.User, user);
+                signoutEvent.Set();
+            });
 
+            var successResponse = CreateSuccessTokenResponse();
+            var errorResponse = new TokenRequestResult(null);
+            errorResponse.ResponseStatus = WebTokenRequestStatus.UserInteractionRequired;
+
+            var provider = new Mock<AccountProvider>();
+            provider
+            .SetupSequence(o => o.GetTokenSilentlyAsync(It.IsAny<WebTokenRequest>()))
+            .ReturnsAsync(successResponse)
+            .ReturnsAsync(errorResponse);
+
+            user.GetImpl().Provider = provider.Object;
+
+            var silentResult = await user.SignInSilentlyAsync();
+            Assert.AreEqual(silentResult.Status, SignInStatus.Success);
+            Assert.IsTrue(user.IsSignedIn);
+
+            try
+            {
+                var token = await user.GetTokenAndSignatureAsync("GET", "", "");
+            }
+            catch(XboxException ex)
+            {
+                Assert.IsFalse(string.IsNullOrEmpty(ex.Message));
+                Assert.IsFalse(user.IsSignedIn);
+
+                Assert.IsTrue(signoutEvent.WaitOne(10000), "wait signout event time out");
+
+                return;
+            }
+
+            Assert.Fail("No exception was thrown.");
         }
     }
 }

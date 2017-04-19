@@ -4,6 +4,7 @@
 namespace Microsoft.Xbox.Services
 {
     using global::System;
+    using global::System.Collections.Generic;
     using global::System.Text;
     using global::System.Threading.Tasks;
 
@@ -13,8 +14,37 @@ namespace Microsoft.Xbox.Services
     {
         private readonly IUserImpl userImpl;
 
-        public static event EventHandler<SignInCompletedEventArgs> SignInCompleted;
-        public static event EventHandler<SignOutCompletedEventArgs> SignOutCompleted;
+        private static event EventHandler<SignInCompletedEventArgs> InternalSignInCompleted;
+        private static List<EventHandler<SignInCompletedEventArgs>> signInDelegates = new List<EventHandler<SignInCompletedEventArgs>>();
+        public static event EventHandler<SignInCompletedEventArgs> SignInCompleted
+        {
+            add
+            {
+                InternalSignInCompleted += value;
+                signInDelegates.Add(value);
+            }
+            remove
+            {
+                InternalSignInCompleted -= value;
+                signInDelegates.Remove(value);
+            }
+        }
+
+        private static event EventHandler<SignOutCompletedEventArgs> InternalSignOutCompleted;
+        private static List<EventHandler<SignOutCompletedEventArgs>> signOutDelegates = new List<EventHandler<SignOutCompletedEventArgs>>();
+        public static event EventHandler<SignOutCompletedEventArgs> SignOutCompleted
+        {
+            add
+            {
+                InternalSignOutCompleted += value;
+                signOutDelegates.Add(value);
+            }
+            remove
+            {
+                InternalSignOutCompleted -= value;
+                signOutDelegates.Remove(value);
+            }
+        }
 
         public string WebAccountId
         {
@@ -91,13 +121,13 @@ namespace Microsoft.Xbox.Services
 
         protected static void OnSignInCompleted(IXboxLiveUser user)
         {
-            var handler = SignInCompleted;
+            var handler = InternalSignInCompleted;
             if (handler != null) handler(null, new SignInCompletedEventArgs(user));
         }
 
         protected static void OnSignOutCompleted(IXboxLiveUser user)
         {
-            var handler = SignOutCompleted;
+            var handler = InternalSignOutCompleted;
             if (handler != null) handler(null, new SignOutCompletedEventArgs(user));
         }
     }
