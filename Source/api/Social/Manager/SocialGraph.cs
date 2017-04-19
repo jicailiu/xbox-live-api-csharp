@@ -132,7 +132,6 @@ namespace Microsoft.Xbox.Services.Social.Manager
         /// Process all events for this social graph
         /// </summary>
         /// <param name="events"></param>
-        /// <returns>A list of users affected by the processed events.</returns>
         public void DoWork(List<SocialEvent> events)
         {
             this.refreshLock.EnterWriteLock();

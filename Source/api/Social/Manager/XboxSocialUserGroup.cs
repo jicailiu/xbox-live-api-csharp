@@ -141,7 +141,8 @@ namespace Microsoft.Xbox.Services.Social.Manager
                     this.UpdateFilteredView(userSnapshot, events);
                     break;
                 case SocialUserGroupType.UserList:
-                    foreach (ulong userId in this.users.Keys)
+                    // We need to convert the keys to a list because we're modifying the collection.
+                    foreach (ulong userId in this.users.Keys.ToList())
                     {
                         XboxSocialUser user;
                         // Check if there's an updated user in the snapshot.

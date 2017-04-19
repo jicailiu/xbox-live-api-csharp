@@ -60,8 +60,6 @@ namespace Microsoft.Xbox.Services
 
         public string Environment { get; set; }
 
-        public TokenAndSignatureResult TokenAndSignature { get; set; }
-
         public string GetEndpointForService(string serviceName, string protocol = "https")
         {
             return string.Format("{0}://{1}{2}.xboxlive.com", protocol, serviceName, string.IsNullOrEmpty(this.Environment) ? string.Empty : ("." + this.Environment));
