@@ -44,5 +44,10 @@ namespace Microsoft.Xbox.Services
             }
         }
 
+        internal UserImpl GetImpl()
+        {
+            return this.userImpl as UserImpl;
+        }
+
     }
 }

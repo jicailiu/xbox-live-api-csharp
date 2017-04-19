@@ -23,7 +23,7 @@ namespace Microsoft.Xbox.Services.System
         {
             return Microsoft.Xbox.Services.WinRT.TitleCallableUI.ShowProfileCardUIAsync(
                     targetXboxUserId,
-                    user.SystemUser
+                    user.WindowsSystemUser
                     ).AsTask();
         }
 
@@ -43,7 +43,7 @@ namespace Microsoft.Xbox.Services.System
 
             return Microsoft.Xbox.Services.WinRT.TitleCallableUI.CheckPrivilegeSilently(
                     (Microsoft.Xbox.Services.WinRT.GamingPrivilege)privilege,
-                    user.SystemUser,
+                    user.WindowsSystemUser,
                     scope,
                     policy
                     );
@@ -69,7 +69,7 @@ namespace Microsoft.Xbox.Services.System
             return Microsoft.Xbox.Services.WinRT.TitleCallableUI.CheckPrivilegeWithUIAsync(
                     (Microsoft.Xbox.Services.WinRT.GamingPrivilege)privilege,
                     friendlyMessage,
-                    user.SystemUser,
+                    user.WindowsSystemUser,
                     scope,
                     policy
                     ).AsTask();

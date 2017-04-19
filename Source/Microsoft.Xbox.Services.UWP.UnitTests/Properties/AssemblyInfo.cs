@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -8,12 +9,13 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("Microsoft.Xbox.Services.UWP.UnitTests")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("HP Inc.")]
+[assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("Microsoft.Xbox.Services.UWP.UnitTests")]
 [assembly: AssemblyCopyright("Copyright © HP Inc. 2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: AssemblyMetadata("TargetPlatform","UAP")]
+[assembly: NeutralResourcesLanguageAttribute("en-US")]
 
 // Version information for an assembly consists of the following four values:
 //
