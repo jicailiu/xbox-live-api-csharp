@@ -95,7 +95,7 @@ namespace Microsoft.Xbox.Services.System
                     false
                 );
 
-                if (tokenAndSigResult != null && tokenAndSigResult.XboxUserId != null && tokenAndSigResult.XboxUserId.Length != 0)
+                if (tokenAndSigResult != null && !string.IsNullOrEmpty(tokenAndSigResult.XboxUserId))
                 {
                     if (string.IsNullOrEmpty(tokenAndSigResult.Token))
                     {
@@ -316,7 +316,7 @@ namespace Microsoft.Xbox.Services.System
             else if (tokenResponseStatus == WebTokenRequestStatus.ProviderError)
             {
                 string errorMsg = "Provider error: " + tokenResult.ResponseError.ErrorMessage  + ", Error Code: " + tokenResult.ResponseError.ErrorCode.ToString("X");
-                throw new XboxException(errorMsg);
+                throw new XboxException((int)tokenResult.ResponseError.ErrorCode, errorMsg);
             }
             else
             {
