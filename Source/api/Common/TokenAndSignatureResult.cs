@@ -68,7 +68,7 @@ namespace Microsoft.Xbox.Services
             set;
         }
 #if WINDOWS_UWP
-        internal WebTokenRequestResult TokenRequestResult
+        internal WebTokenRequestStatus TokenRequestResultStatus
         {
             get;
             set;
