@@ -44,9 +44,9 @@ namespace Microsoft.Xbox.Services
             }
         }
 
-        internal UserImpl GetImpl()
+        internal UserImpl Impl
         {
-            return this.userImpl as UserImpl;
+            get { return (this.userImpl as UserImpl); }
         }
 
         internal static void CleanupEventHandler()

@@ -11,11 +11,11 @@ namespace Microsoft.Xbox.Services.System
     {
         private WebAccountProvider provider;
 
-        public bool HasProvider() { return provider != null; }
+        public bool HasProvider { get{ return provider != null; } }
 
         public async Task InitializeProvider(User user)
         {
-            if (provider!=null)
+            if (this.HasProvider)
             {
                 return;
             }
@@ -44,7 +44,7 @@ namespace Microsoft.Xbox.Services.System
 
         public WebTokenRequest CreateWebTokenRequest()
         {
-            if (this.provider == null)
+            if (!this.HasProvider)
             {
                 throw new XboxException("Xbox Live identity provider is not initialized");
             }

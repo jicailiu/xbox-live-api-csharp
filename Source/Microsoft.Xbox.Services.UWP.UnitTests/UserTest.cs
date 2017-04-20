@@ -106,13 +106,13 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             Assert.IsFalse(user.IsSignedIn);
 
             AutoResetEvent signinEvent = new AutoResetEvent(false);
-            XboxLiveUser.SignInCompleted += ((Object o, SignInCompletedEventArgs args) =>
+            XboxLiveUser.SignInCompleted += (Object o, SignInCompletedEventArgs args) =>
             {
                 Assert.AreEqual(args.User, user);
                 signinEvent.Set();
-            });
+            };
             var response = CreateSuccessTokenResponse();
-            user.GetImpl().Provider = CreateMockAccountProvider(response, null).Object;
+            user.Impl.Provider = CreateMockAccountProvider(response, null).Object;
 
             // Create xbl user with system user
             var silentResult = await user.SignInSilentlyAsync();
@@ -125,7 +125,7 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             Assert.AreEqual(user.Privileges, mockPrivileges);
             Assert.AreEqual(user.WebAccountId, mockWebAccountId);
 
-            Assert.IsTrue(signinEvent.WaitOne(10000), "wait signin event time out");
+            Assert.IsTrue(signinEvent.WaitOne(100), "wait signin event time out");
 
         }
 
@@ -144,7 +144,7 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             });
 
             var response = CreateSuccessTokenResponse();
-            user.GetImpl().Provider = CreateMockAccountProvider(null, response).Object;
+            user.Impl.Provider = CreateMockAccountProvider(null, response).Object;
 
             var signinResult = await user.SignInAsync();
             Assert.AreEqual(signinResult.Status, SignInStatus.Success);
@@ -155,7 +155,7 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             Assert.AreEqual(user.Privileges, mockPrivileges);
             Assert.AreEqual(user.WebAccountId, mockWebAccountId);
 
-            Assert.IsTrue(signinEvent.WaitOne(10000), "wait signin event time out");
+            Assert.IsTrue(signinEvent.WaitOne(100), "wait signin event time out");
         }
 
         [TestCategory("XboxLiveUser")]
@@ -165,7 +165,7 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             var user = new XboxLiveUser();
             var result = new TokenRequestResult(null);
             result.ResponseStatus = WebTokenRequestStatus.UserInteractionRequired;
-            user.GetImpl().Provider = CreateMockAccountProvider(result, null).Object;
+            user.Impl.Provider = CreateMockAccountProvider(result, null).Object;
 
             var signinResult = await user.SignInSilentlyAsync();
             Assert.AreEqual(signinResult.Status, SignInStatus.UserInteractionRequired);
@@ -179,7 +179,7 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             var user = new XboxLiveUser();
             var result = new TokenRequestResult(null);
             result.ResponseStatus = WebTokenRequestStatus.UserCancel;
-            user.GetImpl().Provider = CreateMockAccountProvider(null, result).Object;
+            user.Impl.Provider = CreateMockAccountProvider(null, result).Object;
 
             var signinResult = await user.SignInAsync();
             Assert.AreEqual(signinResult.Status, SignInStatus.UserCancel);
@@ -195,7 +195,7 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             var result = new TokenRequestResult(null);
             result.ResponseStatus = WebTokenRequestStatus.ProviderError;
             result.ResponseError = new WebProviderError(mockErrorcode, mockErrorMessage);
-            user.GetImpl().Provider = CreateMockAccountProvider(result, result).Object;
+            user.Impl.Provider = CreateMockAccountProvider(result, result).Object;
 
             // ProviderError will convert to exception
             try
@@ -239,7 +239,7 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
             .ReturnsAsync(successResponse)
             .ReturnsAsync(errorResponse);
 
-            user.GetImpl().Provider = provider.Object;
+            user.Impl.Provider = provider.Object;
 
             var silentResult = await user.SignInSilentlyAsync();
             Assert.AreEqual(silentResult.Status, SignInStatus.Success);
@@ -254,7 +254,7 @@ namespace Microsoft.Xbox.Services.UWP.UnitTests
                 Assert.IsFalse(string.IsNullOrEmpty(ex.Message));
                 Assert.IsFalse(user.IsSignedIn);
 
-                Assert.IsTrue(signoutEvent.WaitOne(10000), "wait signout event time out");
+                Assert.IsTrue(signoutEvent.WaitOne(100), "wait signout event time out");
 
                 return;
             }
