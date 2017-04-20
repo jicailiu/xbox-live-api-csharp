@@ -213,11 +213,6 @@ namespace Microsoft.Xbox.Services.System
                     }
                 });
 
-                tokenRequestSource.Task.Wait();
-                if (tokenRequestSource.Task.Exception != null)
-                {
-                    throw tokenRequestSource.Task.Exception;
-                }
             return tokenRequestSource.Task;
         }
 
