@@ -131,7 +131,7 @@ namespace Microsoft.Xbox.Services.System
         public async Task<TokenAndSignatureResult> InternalGetTokenAndSignatureAsync(string httpMethod, string url, string headers, byte[] body, bool promptForCredentialsIfNeeded, bool forceRefresh)
         {
             var result = await this.InternalGetTokenAndSignatureHelperAsync(httpMethod, url, headers, body, promptForCredentialsIfNeeded, forceRefresh);
-            if (result.TokenRequestResultStatus == WebTokenRequestStatus.UserInteractionRequired)
+            if (result.TokenRequestResultStatus != WebTokenRequestStatus.UserInteractionRequired)
             {
                 return result;
             }

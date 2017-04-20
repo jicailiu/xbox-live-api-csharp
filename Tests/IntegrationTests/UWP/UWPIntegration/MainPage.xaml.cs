@@ -56,6 +56,19 @@ namespace UWPIntegration
         {
             get { return XboxLive.Instance.StatsManager; }
         }
+        private async void SignInSilentButton_Click(object sender, RoutedEventArgs e)
+        {
+            var signInResult = await this.User.SignInSilentlyAsync();
+
+            await Windows.ApplicationModel.Core.CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () =>
+            {
+                if (signInResult.Status == SignInStatus.Success)
+                {
+                    this.OnPropertyChanged("User");
+                    this.StatsManager.AddLocalUser(this.User);
+                }
+            });
+        }
 
         private async void SignInButton_Click(object sender, RoutedEventArgs e)
         {

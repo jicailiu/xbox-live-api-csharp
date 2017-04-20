@@ -18,8 +18,9 @@
         </Grid.RowDefinitions>
 
         <StackPanel Orientation="Horizontal">
-            <Button x:Name="button" Content="Sign In" Click="SignInButton_Click" Margin="12" Width="100"/>
+            <Button x:Name="signinSilentButton" Content="Sign In silently" Click="SignInSilentButton_Click" Margin="12" Width="113"/>
             <TextBlock Text="{Binding User.Gamertag}" VerticalAlignment="Center"/>
+            <Button x:Name="signinButton" Content="Sign In" Click="SignInButton_Click" Margin="12" Width="100"/>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Margin="4">
